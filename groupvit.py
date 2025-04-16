@@ -4,7 +4,7 @@ import numpy
 from typing import Literal, Optional
 from PIL import Image, ImageFilter
 import torch.nn.functional as TorchFunctional
-from transformers import AutoModelForMaskGeneration, AutoProcessor, GroupViTModel
+from transformers import AutoProcessor, GroupViTModel
 from torchvision.transforms.functional import to_pil_image as tensor_to_image
 
 from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
@@ -71,7 +71,7 @@ class GroupVitPipeline(RawModel):
     _model: GroupViTModel
     _processor: AutoProcessor
 
-    def __init__(self, model: AutoModelForMaskGeneration, processor: AutoProcessor):
+    def __init__(self, model: GroupViTModel, processor: AutoProcessor):
 
         assert isinstance(model, GroupViTModel), f"Model {model} is not a GroupViT model."
         self._model = model
@@ -147,7 +147,7 @@ class ResolveMaskGroupvitInvocation(BaseInvocation, MaskingNode):
         if model_id not in GROUPVIT_MODEL_IDS:
             raise ValueError(f"Model ID {model_id} not found in GroupViT model IDs.")
         
-        _model = AutoModelForMaskGeneration.from_pretrained(GROUPVIT_MODEL_IDS[model_id])        
+        _model = GroupViTModel.from_pretrained(GROUPVIT_MODEL_IDS[model_id])        
         assert isinstance(_model, GroupViTModel), f"Model {model_id} is not a GroupViT model."
         
         _processor = AutoProcessor.from_pretrained(GROUPVIT_MODEL_IDS[model_id])
