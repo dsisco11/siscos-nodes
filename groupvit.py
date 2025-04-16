@@ -147,10 +147,10 @@ class ResolveMaskGroupvitInvocation(BaseInvocation, MaskingNode):
         if model_id not in GROUPVIT_MODEL_IDS:
             raise ValueError(f"Model ID {model_id} not found in GroupViT model IDs.")
         
-        _model = AutoModelForMaskGeneration.from_pretrained(GROUPVIT_MODEL_IDS[model_id], local_files_only=True)        
+        _model = AutoModelForMaskGeneration.from_pretrained(GROUPVIT_MODEL_IDS[model_id])        
         assert isinstance(_model, GroupViTModel), f"Model {model_id} is not a GroupViT model."
         
-        _processor = AutoProcessor.from_pretrained(GROUPVIT_MODEL_IDS[model_id], local_files_only=True)
+        _processor = AutoProcessor.from_pretrained(GROUPVIT_MODEL_IDS[model_id])
         return GroupVitPipeline(model=_model, processor=_processor)
 
     @torch.no_grad()
