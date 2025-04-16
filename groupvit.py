@@ -2,7 +2,7 @@ import cv2
 import torch
 import numpy
 from typing import Literal, Optional
-from PIL import Image, ImageFilter
+from PIL import Image
 import torch.nn.functional as TorchFunctional
 from transformers import AutoProcessor, GroupViTModel
 from torchvision.transforms.functional import to_pil_image as tensor_to_image
