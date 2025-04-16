@@ -178,8 +178,8 @@ class ResolveMaskGroupvitInvocation(BaseInvocation, MaskingNode):
         if self.smoothing > 0:
             mask_tensor = gaussian_blur(mask_tensor, kernel_size=5, sigma=self.smoothing)
 
-        # if self.mask_feathering != 0:
-        #     mask_tensor = self.apply_feathering(mask_tensor, self.mask_feathering)
+        if self.mask_feathering != 0:
+            mask_tensor = self.apply_feathering(mask_tensor, self.mask_feathering)
 
         if self.mask_blur > 0:
             mask_tensor = gaussian_blur(mask_tensor, kernel_size=5, sigma=self.mask_blur)
