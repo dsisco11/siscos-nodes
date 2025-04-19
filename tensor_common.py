@@ -180,7 +180,6 @@ def scale_logits(logits: torch.Tensor, scale: float) -> torch.Tensor:
 @torch.jit.script
 def normalize_tensor(tensor: torch.Tensor, min_threshold: float = 0.0) -> torch.Tensor:
     """Normalize the tensor to the range [0, 1]."""
-    tensor = tensor.clamp(min=min_threshold)
     tensor_min = tensor.min()
     tensor_max = tensor.max()
     return (tensor - tensor_min) / (tensor_max - tensor_min)
