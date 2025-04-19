@@ -7,9 +7,8 @@ from transformers import AutoProcessor, GroupViTModel
 
 from invokeai.app.services.shared.invocation_context import InvocationContext
 from invokeai.backend.raw_model import RawModel
-from invokeai.backend.util.devices import TorchDevice
 
-from ..tensor_common import print_tensor_stats, scale_logits
+from ..tensor_common import print_tensor_stats
 from .segmentation_model import SegmentationModel
 
 

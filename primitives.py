@@ -1,5 +1,7 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+
 from invokeai.app.invocations.baseinvocation import BaseInvocationOutput, invocation_output
 from invokeai.app.invocations.fields import ImageField, OutputField
 
@@ -22,7 +24,7 @@ class MaskField(BaseModel):
 
 @invocation_output("adv_mask_output")
 class AdvancedMaskOutput(BaseInvocationOutput):
-    
+
     mask: MaskField = OutputField(description="The mask.")
     image: ImageField = OutputField(description="The mask image.")
     width: int = OutputField(description="The width of the mask in pixels.")
