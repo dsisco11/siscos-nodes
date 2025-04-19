@@ -51,6 +51,9 @@ class CLIPSegPipeline(RawModel):
         if prompts is None or len(prompts) == 0:
             raise ValueError("No prompts provided for segmentation.")
 
+        # Add a single "empty" prompt to capture ambient noise
+        prompts.insert(0, "")
+
         inputs = self._processor(
             text=prompts,
             images=[image] * len(prompts),# repeat the image for each prompt
@@ -61,10 +64,12 @@ class CLIPSegPipeline(RawModel):
         with torch.no_grad():
             outputs = self._model(**inputs)
 
-        # outputs.segmentation_logits is a tensor of shape (batch_size, num_prompts, height, width)
         # logits = outputs.logits.softmax(dim=1).unsqueeze(0)
         # logits = outputs.logits.sigmoid().unsqueeze(0)
-        logits = outputs.logits.unsqueeze(0)  # (B, num_labels, H₁, W₁)
+        noise_logits: torch.Tensor = outputs.logits[0:1, :, :]
+        raw_logits: torch.Tensor = outputs.logits[1:, :, :]
+        # logits: torch.Tensor = raw_logits.unsqueeze(0)  # (B, num_labels, H₁, W₁)
+        logits: torch.Tensor = torch.sub(raw_logits, noise_logits).unsqueeze(0)  # (B, num_labels, H₁, W₁)
         print("==========================================================")
         # print("Input Prompt:", prompts)
         # print("Input Tokens:", inputs["input_ids"])
