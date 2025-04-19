@@ -79,7 +79,7 @@ class CLIPSegPipeline(RawModel):
 
 class CLIPSegSegmentationModel(SegmentationModel):
     @staticmethod
-    def _load(model_path: Path) -> CLIPSegPipeline:
+    def _load_from_path(model_path: Path) -> CLIPSegPipeline:
         _model = CLIPSegForImageSegmentation.from_pretrained(model_path,
             local_files_only=True,
             # torch_dtype=TorchDevice.choose_torch_dtype()
@@ -105,7 +105,7 @@ class CLIPSegSegmentationModel(SegmentationModel):
         pipeline: CLIPSegPipeline
         with (
             context.models.load_remote_model(
-                source="CIDAS/clipseg-rd64-refined", loader=CLIPSegSegmentationModel._load
+                source="CIDAS/clipseg-rd64-refined", loader=CLIPSegSegmentationModel._load_from_path
             ) as pipeline, # type: ignore
         ):
             return pipeline.run(image_in, prompts=prompts)

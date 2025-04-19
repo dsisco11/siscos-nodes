@@ -79,7 +79,7 @@ class GroupVitPipeline(RawModel):
 
 class GroupVitSegmentationModel(SegmentationModel):
     @staticmethod
-    def _load(model_path: Path) -> GroupVitPipeline:
+    def _load_from_path(model_path: Path) -> GroupVitPipeline:
         _model = GroupViTModel.from_pretrained(model_path,
             local_files_only=True,
             # torch_dtype=TorchDevice.choose_torch_dtype()
@@ -105,7 +105,7 @@ class GroupVitSegmentationModel(SegmentationModel):
         pipeline: GroupVitPipeline
         with (
             context.models.load_remote_model(
-                source="nvidia/groupvit-gcc-yfcc", loader=GroupVitSegmentationModel._load
+                source="nvidia/groupvit-gcc-yfcc", loader=GroupVitSegmentationModel._load_from_path
             ) as pipeline, # type: ignore
         ):
             return pipeline.run(image_in, prompts=prompts)
