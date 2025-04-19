@@ -82,11 +82,13 @@ class GroupVitSegmentationModel(SegmentationModel):
     def _load_from_path(model_path: Path) -> GroupVitPipeline:
         _model = GroupViTModel.from_pretrained(model_path,
             local_files_only=True,
+            # TODO:(sisco): Setting the torch_dtype here doesn't work. It causes the model to complain that the imput tensors aren't of the same type.
             # torch_dtype=TorchDevice.choose_torch_dtype()
         )
         assert isinstance(_model, GroupViTModel), "Model is not a GroupViT model."
 
         _processor = AutoProcessor.from_pretrained(model_path, local_files_only=True,
+            # TODO:(sisco): Setting the torch_dtype here doesn't work. It causes the model to complain that the imput tensors aren't of the same type.
             # torch_dtype=TorchDevice.choose_torch_dtype()
         )
         return GroupVitPipeline(model=_model, processor=_processor)
