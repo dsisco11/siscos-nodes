@@ -1,7 +1,6 @@
+from enum import Enum
 from typing import Literal
 
-import cv2
-import numpy
 import torch
 from torchvision.transforms.functional import to_pil_image as tensor_to_image
 
@@ -9,49 +8,92 @@ from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
 from invokeai.app.invocations.fields import ImageField, InputField
 from invokeai.app.services.image_records.image_records_common import ImageCategory
 from invokeai.app.services.images.images_common import ImageDTO
-from invokeai.app.services.shared.invocation_context import InvocationContext
-
-# from invokeai.app.util.metaenum import MetaEnum
+from invokeai.app.services.shared.invocation_context import InvocationContext, MetadataField
 from invokeai.invocation_api import WithBoard
 
-from ..primitives import AdvancedMaskOutput, MaskField
+from ..primitives import AdvancedMaskOutput, EMaskMode, MaskField
 from ..tensor_common import (
     apply_feathering_ellipse,
     gaussian_blur,
     normalize_tensor,
-    print_tensor_stats,
     upscale_tensor,
 )
 from .clipseg import CLIPSegSegmentationModel
 from .groupvit import GroupVitSegmentationModel
 from .segmentation_model import SegmentationModel
 
-# class SegmentationBlendMode(Enum, metaclass=MetaEnum):
-#     """Defines the blending modes for segmentation masks."""
-#     SUPPRESS = "suppress"
-#     SUBTRACT = "subtract"
 
-SegmentationBlendMode = Literal["suppress", "subtract"]
-ImageSegmentationModelType = Literal["clipseg", "groupvit"]
-SEGMENTATION_MODEL_TYPES: dict[ImageSegmentationModelType, type[SegmentationModel]] = {
-    "clipseg": CLIPSegSegmentationModel,
-    "groupvit": GroupVitSegmentationModel,
+class ESegmentationModel(str, Enum):
+    """Defines the available image-segmentation models."""
+    CLIPSEG = "clipseg"
+    GROUP_VIT = "groupvit"
+
+class ESegmentationBlendMode(str, Enum):
+    """Defines the blending modes for segmentation masks."""
+    SUPPRESS = "suppress"
+    SUBTRACT = "subtract"
+    ADD = "add"
+    MULTIPLY = "multiply"
+    AVERAGE = "average"
+    MAX = "max"
+    MIN = "min"
+    XOR = "xor"
+    OR = "or"
+    AND = "and"
+    NOT = "not"
+
+# TODO:(sisco): Figure out a way to use the enums in the type hints for the input fields instead of these gross literals...
+SegmentationBlendMode = Literal["suppress", "subtract", "add", "multiply", "average", "max", "min", "xor", "or", "and", "not"]
+SegmentationModelType = Literal["clipseg", "groupvit"]
+SEGMENTATION_MODEL_TYPES: dict[ESegmentationModel, type[SegmentationModel]] = {
+    ESegmentationModel.CLIPSEG: CLIPSegSegmentationModel,
+    ESegmentationModel.GROUP_VIT: GroupVitSegmentationModel,
 }
 
-@torch.jit.script
-def _blend_logits(blend_mode: str, lhs: torch.Tensor, rhs: torch.Tensor) -> torch.Tensor:
+@torch.compile(dynamic=True)
+def _blend_logits(blend_mode: str, lhs: torch.Tensor, rhs: torch.Tensor, blend_factor: float) -> torch.Tensor:
     """Blend two masks together using the specified blend mode."""
-    if (blend_mode == "suppress"):
-        # suppress the positive mask according to the inverse of the negative mask
-        return torch.mul(lhs, torch.sub(1.0, rhs))
-    elif (blend_mode == "subtract"):
-        return torch.sub(lhs, rhs).clamp(min=0.0, max=1.0)
-    else:
-        raise ValueError(f"Unknown blend mode: {blend_mode}")
+    match ESegmentationBlendMode(blend_mode):
+        case ESegmentationBlendMode.SUPPRESS:
+            # suppress the positive mask according to the inverse of the negative mask
+            return torch.mul(lhs, torch.sub(1.0, rhs).mul(blend_factor))
+        case ESegmentationBlendMode.SUBTRACT:
+            return torch.sub(lhs, torch.mul(rhs, blend_factor)).clamp(min=0.0, max=1.0)
+        case ESegmentationBlendMode.ADD:
+            return torch.add(lhs, torch.mul(rhs, blend_factor)).clamp(min=0.0, max=1.0)
+        case ESegmentationBlendMode.MULTIPLY:
+            return torch.mul(lhs, torch.mul(rhs, blend_factor))
+        case ESegmentationBlendMode.AVERAGE:
+            # average the two masks together
+            return torch.mean(torch.stack([lhs, rhs]), dim=0).softmax(dim=1).clamp(min=0.0, max=1.0)
+        case ESegmentationBlendMode.MAX:
+            # take the maximum of the two masks
+            return torch.max(lhs, torch.mul(rhs, blend_factor))
+        case ESegmentationBlendMode.MIN:
+            # take the minimum of the two masks
+            return torch.min(lhs, torch.mul(rhs, blend_factor))
+        case ESegmentationBlendMode.XOR:
+            # take the exclusive or of the two masks
+            return torch.logical_xor(lhs, torch.mul(rhs, blend_factor)).float()
+        case ESegmentationBlendMode.OR:
+            # take the logical or of the two masks
+            return torch.logical_or(lhs, torch.mul(rhs, blend_factor)).float()
+        case ESegmentationBlendMode.AND:
+            # take the logical and of the two masks
+            return torch.logical_and(lhs, torch.mul(rhs, blend_factor)).float()
+        case ESegmentationBlendMode.NOT:
+            # take the logical not of the first mask
+            return torch.logical_not(lhs).float()
+        case _:
+            raise ValueError(f"Unknown blend mode: {blend_mode}")
+
+@torch.compile(dynamic=True)
+def _postprocess_logits(tensor: torch.Tensor, min_threshold: float) -> torch.Tensor:
+    return normalize_tensor(tensor.mean(dim=1, keepdim=True).subtract(min_threshold).clamp(min=0.0))
 
 @invocation(
     "segmentation_mask_resolver",
-    title="Segmentation Mask Resolver",
+    title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
     version="0.0.1",
@@ -64,42 +106,53 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
 """
 
-    image: ImageField = InputField(description="")
-    model_type: ImageSegmentationModelType = InputField(
-        default="clipseg", description="The model to use for segmentation."
+    image: ImageField = InputField(title="Image", description="The image to segment")
+    model_type: SegmentationModelType = InputField(title="Resolver",
+        default=ESegmentationModel.CLIPSEG, description="The model to use for segmentation",
+        ui_choice_labels={
+            "clipseg": "CLIPSeg",
+            "groupvit": "GroupViT",
+        }
     )
     blend_mode: SegmentationBlendMode = InputField(
-        default="suppress", description="How to blend the positive and negative prompts."
+        default=ESegmentationBlendMode.SUPPRESS, description="How to blend the positive and negative prompts"
     )
-    prompt_positive: list[str] = InputField(description="")
-    prompt_negative: list[str] = InputField(description="")
-    smoothing: float = InputField(default=4.0, description="")
-    min_threshold: float = InputField(
-        default=0.0, description="Minimum certainty for the mask, values below this will be clipped to 0."
+    blend_factor: float = InputField(
+        default=1.0, description="The blend factor to use for blending the positive and negative prompts"
     )
-    mask_feathering: float = InputField(
-        default=2, description="Feathering radius for the mask. 0 means no feathering."
+    smoothing: float = InputField(default=4.0, title="Smoothing", description="Smoothing radius to apply to the raw segmentation response")
+    min_threshold: float = InputField(title="Minimum Threshold",
+        description="The minimum threshold to use for the positive/negative response. Values below this will be clipped to 0 for both",
+        default=0.0,
     )
-    mask_blur: float = InputField(default=2.0, description="Blur radius for the mask. 0 means no blur.")
+    mask_feathering: float = InputField(title="Mask Feathering",
+        default=2, description="Feathering radius for the mask. 0 means no feathering"
+    )
+    mask_blur: float = InputField(default=2.0, title="Mask Blur", description="Blur radius for the mask. 0 means no blur")
+    prompt_positive: list[str] = InputField(title="Positive Prompt", description="The positive prompt(s) to use for segmentation.\nResults from all positive prompts are averaged together before being affected by the negatives.")
+    prompt_negative: list[str] = InputField(title="Negative Prompt", description="The negative prompt(s) to use for segmentation.\nResults from all negative prompts are averaged together before affecting the positives.")
+    use_tiling: bool = InputField(
+        default=False, title="Use Tiling", description="Whether to use tiling for larger images. This will split the image into tiles and process each tile separately."
+    )
 
     def invoke(self, context: InvocationContext) -> AdvancedMaskOutput:
         image_in = context.images.get_pil(self.image.image_name, mode="RGB")
         image_size = image_in.size
         pos_prompt_count = len(self.prompt_positive)
         neg_prompt_count = len(self.prompt_negative)
-        model: SegmentationModel = SEGMENTATION_MODEL_TYPES[self.model_type]()
+        model: SegmentationModel = SEGMENTATION_MODEL_TYPES[ESegmentationModel(self.model_type)]()
 
         # If we have no prompts, we can skip the model call and just return a blank mask.
-        # if (pos_prompt_count == 0 and neg_prompt_count == 0):
-        #     mask_tensor = torch.ones((image_size[1], image_size[0]), dtype=torch.bool)
-        #     mask_out = tensor_to_image(mask_tensor, mode="L")
-        #     mask_dto:ImageDTO = context.images.save(image=mask_out, image_category=ImageCategory.MASK)
-        #     return AdvancedMaskOutput(
-        #         mask=MaskField(asset_id=mask_dto.image_name, mode="boolean"),
-        #         image=ImageField(image_name=mask_dto.image_name),
-        #         width=image_size[0],
-        #         height=image_size[1],
-        #     )
+        if (pos_prompt_count == 0 and neg_prompt_count == 0):
+            mask_tensor = torch.ones((image_size[1], image_size[0]), dtype=torch.bool)
+            mask_out = tensor_to_image(mask_tensor, mode="L")
+            mask_dto:ImageDTO = context.images.save(image=mask_out, image_category=ImageCategory.MASK)
+            return AdvancedMaskOutput(
+                mask=MaskField(asset_id=mask_dto.image_name, mode=EMaskMode.BOOLEAN),
+                image=ImageField(image_name=mask_dto.image_name),
+                width=image_size[0],
+                height=image_size[1],
+            )
 
         if (pos_prompt_count == 0):
             # Done to test if the model is working correctly
@@ -136,12 +189,13 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         pos_logits = _postprocess_logits(logits[:, :pos_prompt_count], self.min_threshold)   # (B, 1, H₁, W₁)
         net_logits = pos_logits
 
+        neg_logits: torch.Tensor = None
         if (neg_prompt_count > 0):
-            neg_logits = normalize_tensor(logits[:, pos_prompt_count:].mean(dim=1, keepdim=True))  # (B, 1, H₁, W₁)
-            net_logits = _blend_logits(self.blend_mode, pos_logits, neg_logits)
+            neg_logits = _postprocess_logits(logits[:, pos_prompt_count:], self.min_threshold)  # (B, 1, H₁, W₁)
+        else:
+            neg_logits = torch.zeros_like(pos_logits)
 
-        if (self.min_threshold > 0):
-            net_logits = torch.sub(net_logits, self.min_threshold).clamp(min=0.0)
+        net_logits = _blend_logits(self.blend_mode, pos_logits, neg_logits, self.blend_factor)
 
         context.util.signal_progress("Normalizing results", 0.4)
         # Normalize the values to be between 0 and 1
@@ -155,6 +209,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         context.util.signal_progress("Upscaling mask", 0.6)
         net_logits = upscale_tensor(net_logits, target_size=image_size)
 
+        # TODO:(sisco): Fix feathering implementation
         if (self.mask_feathering > 0):
             context.util.signal_progress("Feathering mask", 0.7)
             net_logits = apply_feathering_ellipse(net_logits, self.mask_feathering)
@@ -169,10 +224,22 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         context.util.signal_progress("Finalizing mask", 0.9)
         image_out = tensor_to_image(net_logits, mode="L")
-        mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK)
+        _metadata = MetadataField({
+            "origin": self.image.image_name,
+            "segmentation_model": self.model_type,
+            "positive_prompt": self.prompt_positive,
+            "negative_prompt": self.prompt_negative,
+            "blend_mode": self.blend_mode,
+            "blend_factor": self.blend_factor,
+            "smoothing": self.smoothing,
+            "min_threshold": self.min_threshold,
+            "mask_feathering": self.mask_feathering,
+            "mask_blur": self.mask_blur,
+        })
+        mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
         context.util.signal_progress("Finished", 1)
         return AdvancedMaskOutput(
-            mask=MaskField(asset_id=mask_dto.image_name, mode="image_luminance"),
+            mask=MaskField(asset_id=mask_dto.image_name, mode=EMaskMode.IMAGE_LUMINANCE),
             image=ImageField(image_name=mask_dto.image_name),
             width=width,
             height=height,
