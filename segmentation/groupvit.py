@@ -65,15 +65,9 @@ class GroupVitPipeline(RawModel):
 
         # outputs.segmentation_logits is a tensor of shape (batch_size, num_prompts, height, width)
         scale = self._model.logit_scale.exp()
-        # logits: torch.Tensor = scale_logits(outputs.segmentation_logits, scale)
         noise_logits: torch.Tensor = outputs.segmentation_logits[:, 0:1, :, :]
         raw_logits: torch.Tensor = outputs.segmentation_logits[:, 1:, :, :]
         logits: torch.Tensor = torch.sub(raw_logits, noise_logits).div(scale)
-        print("==========================================================")
-        # print("Input Prompt:", prompts)
-        # print("Input Tokens:", inputs["input_ids"])
-        print_tensor_stats(logits, "Logits")
-        print("==========================================================")
         return logits
 
 class GroupVitSegmentationModel(SegmentationModel):

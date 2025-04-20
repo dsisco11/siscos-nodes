@@ -63,17 +63,9 @@ class CLIPSegPipeline(RawModel):
         with torch.no_grad():
             outputs = self._model(**inputs)
 
-        # logits = outputs.logits.softmax(dim=1).unsqueeze(0)
-        # logits = outputs.logits.sigmoid().unsqueeze(0)
         noise_logits: torch.Tensor = outputs.logits[0:1, :, :]
         raw_logits: torch.Tensor = outputs.logits[1:, :, :]
-        # logits: torch.Tensor = raw_logits.unsqueeze(0)  # (B, num_labels, H₁, W₁)
         logits: torch.Tensor = torch.sub(raw_logits, noise_logits).unsqueeze(0)  # (B, num_labels, H₁, W₁)
-        print("==========================================================")
-        # print("Input Prompt:", prompts)
-        # print("Input Tokens:", inputs["input_ids"])
-        print_tensor_stats(logits, "Logits")
-        print("==========================================================")
         return logits
 
 class CLIPSegSegmentationModel(SegmentationModel):
