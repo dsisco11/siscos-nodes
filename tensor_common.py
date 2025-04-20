@@ -3,7 +3,7 @@ import math
 import torch
 
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def upscale_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.Tensor:
     """
     Upscale a 4D torch tensor (batch, channels, height, width) to a given size.
@@ -20,7 +20,7 @@ def upscale_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.
 
     return torch.nn.functional.interpolate(tensor, size=target_size, mode='bicubic', align_corners=True)
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def gaussian_blur(tensor: torch.Tensor, sigma: float) -> torch.Tensor:
     """
     Apply Gaussian blur to a 4D torch tensor (batch, channels, height, width).
@@ -61,7 +61,7 @@ def gaussian_blur(tensor: torch.Tensor, sigma: float) -> torch.Tensor:
     padding = kernel_size // 2
     return torch.nn.functional.conv2d(tensor, weight, padding=padding, groups=C)
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def apply_feathering_square(tensor: torch.Tensor, radius: float) -> torch.Tensor:
     """
     Apply a (square) dilation to the mask tensor by 'radius' pixels,
@@ -98,7 +98,7 @@ def apply_feathering_square(tensor: torch.Tensor, radius: float) -> torch.Tensor
         # unsupported rank: just return unchanged
         return tensor
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def apply_feathering_ellipse(tensor: torch.Tensor, radius: float) -> torch.Tensor:
     """
     Soft circular/elliptical dilation of a mask:
@@ -162,27 +162,27 @@ def apply_feathering_ellipse(tensor: torch.Tensor, radius: float) -> torch.Tenso
     else:
         return y
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def box_blur(tensor: torch.Tensor, radius: float) -> torch.Tensor:
     kernel = torch.ones((1, 1, int(radius), int(radius)), device=tensor.device, dtype=tensor.dtype)
-    kernel = kernel / (radius * radius)
+    kernel = torch.div(kernel, radius * radius)
     return torch.nn.functional.conv2d(tensor, kernel, padding=(int(radius) // 2, int(radius) // 2), groups=1)
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def scale_logits(logits: torch.Tensor, scale: float) -> torch.Tensor:
     """Scale the logits by a given factor.
     Args:
         logits (torch.Tensor): The input logits tensor.
         scale (float): The scaling factor.
     """
-    return (logits / scale).softmax(dim=2)
+    return torch.div(logits, scale).softmax(dim=2)
 
-@torch.jit.script
+@torch.compile(dynamic=True)
 def normalize_tensor(tensor: torch.Tensor, min_threshold: float = 0.0) -> torch.Tensor:
     """Normalize the tensor to the range [0, 1]."""
     tensor_min = tensor.min()
     tensor_max = tensor.max()
-    return (tensor - tensor_min) / (tensor_max - tensor_min)
+    return torch.div(torch.sub(tensor, tensor_min), torch.sub(tensor_max, tensor_min))
 
 def print_tensor_stats(tensor: torch.Tensor, name: str = "Tensor"):
     """Print the statistics of a tensor."""
