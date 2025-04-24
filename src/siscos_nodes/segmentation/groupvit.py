@@ -2,13 +2,12 @@ from pathlib import Path
 from typing import Optional
 
 import torch
+from invokeai.app.services.shared.invocation_context import InvocationContext
+from invokeai.backend.raw_model import RawModel
 from PIL import Image
 from transformers import AutoProcessor, GroupViTModel
 
-from invokeai.app.services.shared.invocation_context import InvocationContext
-from invokeai.backend.raw_model import RawModel
-
-from ..tensor_common import print_tensor_stats
+from ..util.tensor_common import normalize_logits
 from .segmentation_model import SegmentationModel
 
 
@@ -29,7 +28,9 @@ class GroupVitPipeline(RawModel):
 
     def calc_size(self) -> int:
         # HACK(ryand): Fix the circular import issue.
-        from invokeai.backend.model_manager.load.model_util import calc_model_size_by_data
+        from invokeai.backend.model_manager.load.model_util import (
+            calc_model_size_by_data,
+        )
 
         return calc_model_size_by_data(model=self._model, logger=None)
 
@@ -55,7 +56,7 @@ class GroupVitPipeline(RawModel):
 
         inputs = self._processor(
             text=prompts,
-            images=[image],# repeat the image for each prompt
+            images=[image],
             return_tensors="pt",
             padding="max_length",
         ).to(self._model.device)
@@ -68,6 +69,8 @@ class GroupVitPipeline(RawModel):
         noise_logits: torch.Tensor = outputs.segmentation_logits[:, 0:1, :, :]
         raw_logits: torch.Tensor = outputs.segmentation_logits[:, 1:, :, :]
         logits: torch.Tensor = torch.sub(raw_logits, noise_logits).div(scale)
+        # modify tensor to match shape: (num_prompts, 1, H₁, W₁)
+        logits = normalize_logits(logits.permute(1, 0, 2, 3))
         return logits
 
 class GroupVitSegmentationModel(SegmentationModel):

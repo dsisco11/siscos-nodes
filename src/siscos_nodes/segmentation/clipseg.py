@@ -2,13 +2,12 @@ from pathlib import Path
 from typing import Optional
 
 import torch
+from invokeai.app.services.shared.invocation_context import InvocationContext
+from invokeai.backend.raw_model import RawModel
 from PIL import Image
 from transformers import CLIPSegForImageSegmentation, CLIPSegProcessor
 
-from invokeai.app.services.shared.invocation_context import InvocationContext
-from invokeai.backend.raw_model import RawModel
-
-from ..tensor_common import print_tensor_stats
+from ..util.tensor_common import normalize_logits
 from .segmentation_model import SegmentationModel
 
 
@@ -65,8 +64,10 @@ class CLIPSegPipeline(RawModel):
 
         noise_logits: torch.Tensor = outputs.logits[0:1, :, :]
         raw_logits: torch.Tensor = outputs.logits[1:, :, :]
-        logits: torch.Tensor = torch.sub(raw_logits, noise_logits).unsqueeze(0)  # (B, num_labels, H₁, W₁)
-        return logits
+        logits: torch.Tensor = torch.sub(raw_logits, noise_logits)# (num_prompts, H₁, W₁)
+
+        # modify tensor to match shape: (num_prompts, 1, H₁, W₁)
+        return normalize_logits(logits).unsqueeze(1)
 
 class CLIPSegSegmentationModel(SegmentationModel):
     @staticmethod
@@ -84,7 +85,7 @@ class CLIPSegSegmentationModel(SegmentationModel):
         )
         return CLIPSegPipeline(model=_model, processor=_processor)
 
-    def execute(self, context: InvocationContext, image_in: Image.Image, prompts: list[str] | None) -> torch.Tensor: # (B, total_prompts, H₁, W₁)
+    def execute(self, context: InvocationContext, image_in: Image.Image, prompts: list[str] | None) -> torch.Tensor: # (total_prompts, 1, H₁, W₁)
         """Run the model on the given image and prompts.
 
         Args:
@@ -92,13 +93,13 @@ class CLIPSegSegmentationModel(SegmentationModel):
             prompts (list[str] | None): The prompts to use for segmentation.
 
         Returns:
-            torch.Tensor: The output tensor from the model.
+             Tensor<total_prompts, 1, H₁, W₁>: The output tensor from the model.
         """
 
         pipeline: CLIPSegPipeline
         with (
             context.models.load_remote_model(
                 source="CIDAS/clipseg-rd64-refined", loader=CLIPSegSegmentationModel._load_from_path
-            ) as pipeline, # type: ignore
+            ) as pipeline, # type: ignore 
         ):
             return pipeline.run(image_in, prompts=prompts)
