@@ -7,6 +7,7 @@ import torchvision.transforms.functional
 
 
 # @torch.compile(dynamic=True)
+@torch.no_grad()
 @torch.jit.script
 def upscale_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.Tensor:
     """
@@ -25,6 +26,7 @@ def upscale_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.
     return torch.nn.functional.interpolate(tensor, size=target_size, mode='bilinear', align_corners=True)
 
 # @torch.compile(dynamic=True)
+@torch.no_grad()
 @torch.jit.script
 def gaussian_blur(tensor: torch.Tensor, sigma: float) -> torch.Tensor:
     """
@@ -43,6 +45,7 @@ def gaussian_blur(tensor: torch.Tensor, sigma: float) -> torch.Tensor:
     return torchvision.transforms.functional.gaussian_blur(tensor, [kernel_size, kernel_size], [sigma, sigma])
 
 @lru_cache(maxsize=8)
+@torch.no_grad()
 def make_ellipse_kernel(radius: int, device: torch.device, dtype: torch.dtype) -> torch.Tensor:
     """Return a flattened 2D linear fall‑off kernel of size (k*k)."""
     k = radius*2 + 1
@@ -56,6 +59,7 @@ def make_ellipse_kernel(radius: int, device: torch.device, dtype: torch.dtype) -
     return w.view(-1)  # shape [k*k]
 
 # @torch.compile(dynamic=True)
+@torch.no_grad()
 @torch.jit.script
 def apply_feathering_ellipse(
     tensor: torch.Tensor,
@@ -175,7 +179,3 @@ def normalize_logits(logits: torch.Tensor) -> torch.Tensor:
     # normalize each [H,W] slice to [0,1]
     norm = (logits - vmin) / range
     return (norm * 2.0) - 1.0 # scale to [-1, 1]
-
-def print_tensor_stats(tensor: torch.Tensor, name: str = "Tensor"):
-    """Print the statistics of a tensor."""
-    print(f"{name} - min: {tensor.min().item()}, max: {tensor.max().item()}, mean: {tensor.mean().item()}, std: {tensor.std().item()}")
