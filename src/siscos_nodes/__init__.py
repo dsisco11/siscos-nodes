@@ -1,2 +1,6 @@
-from .masking import *
-from .segmentation import *
+from . import masking, segmentation
+
+__all__ = [
+    "masking",
+    "segmentation",
+]
