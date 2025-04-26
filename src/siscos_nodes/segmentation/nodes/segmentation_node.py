@@ -26,9 +26,9 @@ from siscos_nodes.src.siscos_nodes.util.tensor_common import (
 
 from ..common import (
     SEGMENTATION_MODEL_TYPES,
-    CompareMode,
     EMixingMode,
     ESegmentationModel,
+    MixingMode,
     SegmentationModelType,
     collapse_scalar_fields,
     compare_scalar_fields,
@@ -58,10 +58,10 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             ESegmentationModel.GROUP_VIT: "GroupViT",
         }
     )
-    blend_mode: CompareMode = InputField(title="Prompt Mode",
+    blend_mode: MixingMode = InputField(title="Prompt Mode",
         default=EMixingMode.AVERAGE, description="How to combine prompts within the same positive/negative group amongst themselves"
     )
-    compare_mode: CompareMode = InputField(title="Comparison Mode",
+    compare_mode: MixingMode = InputField(title="Comparison Mode",
         default=EMixingMode.SUPPRESS, description="How to compare the positive and negative prompts"
     )
     smoothing: float = InputField(default=4.0, title="Smoothing", description="Smoothing radius to apply to the raw segmentation response")

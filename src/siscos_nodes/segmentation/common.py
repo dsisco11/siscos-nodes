@@ -35,7 +35,7 @@ class EMixingMode(str, Enum):
     AND = "and"
 
 # TODO:(sisco): Figure out a way to use the enums in the type hints for the input fields instead of these gross literals...
-CompareMode = Literal["suppress", "subtract", "add", "multiply", "average", "max", "min", "xor", "or", "and"]
+MixingMode = Literal[EMixingMode.SUPPRESS, EMixingMode.SUBTRACT, EMixingMode.ADD, EMixingMode.MULTIPLY, EMixingMode.AVERAGE, EMixingMode.MAX, EMixingMode.MIN, EMixingMode.XOR, EMixingMode.OR, EMixingMode.AND]
 SegmentationModelType = Literal[ESegmentationModel.CLIPSEG, ESegmentationModel.GROUP_VIT]
 SEGMENTATION_MODEL_TYPES: dict[ESegmentationModel, type[SegmentationModel]] = {
     ESegmentationModel.CLIPSEG: CLIPSegSegmentationModel,
