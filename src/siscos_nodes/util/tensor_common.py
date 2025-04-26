@@ -105,23 +105,61 @@ def apply_feathering_ellipse(
         return out[0]
     return out
 
-# @torch.jit.script
+@torch.no_grad()
+@torch.jit.script
 def normalize_tensor(tensor: torch.Tensor) -> torch.Tensor:
     """Normalize each H/W layer(separately) of the tensor to the range [0, 1]."""
     ih = tensor.dim() - 2
     iw = ih + 1
     vmin = tensor.amin(dim=(ih, iw), keepdim=True)
     vmax = tensor.amax(dim=(ih, iw), keepdim=True)
-    # avoid division by zero if a slice is constant
-    range = vmax - vmin
-    range[range == 0] = 1e-6
-    # return ((tensor - vmin) / range)
-    return torch.where(
-        range != 0,
-        (tensor - vmin) / range,
-        torch.ones_like(tensor)
-    )
 
+    # if a layer is zero-filled, we want to ensure the normalized result is also zero.
+    # logically, the layer is zeroed only if the min and max are both equal to zero
+    # boolean logic deduction shows that this is equivalent to: !(vmin != 0 | vmax != 0)
+    # so we use (vmin != 0 | vmax != 0) to get a boolean tensor of the same shape as vmin/vmax, and then later multiply the tensor by it to zero out the null layers.
+    layer_is_non_zero = torch.logical_or(vmin, vmax)
+
+    # avoid division by zero for layers filled with a single constant value by adding a small epsilon to the range
+    eps = 1e-06 # torch.finfo(tensor.dtype).eps # e.g. ~1.19e-07 for float32
+    range = (vmax - vmin) + eps
+
+    # add epsilon to cause layers with a constant value to result in 1.0 after normalization
+    result = (tensor - vmin) + eps 
+    # zero out the null layers
+    result *= layer_is_non_zero
+    # normalize each [H,W] slice to [0,1]
+    return result / range
+
+@torch.no_grad()
+@torch.jit.script
+def threshold_and_normalize_tensor(tensor: torch.Tensor, threshold: float) -> torch.Tensor:
+    """Normalize each H/W layer(separately) of the tensor to the range [0, 1], then offset by the threshold and renormalize."""
+    ih = tensor.dim() - 2
+    iw = ih + 1
+    vmin = tensor.amin(dim=(ih, iw), keepdim=True)
+    vmax = tensor.amax(dim=(ih, iw), keepdim=True)
+
+    # if a layer is zero-filled, we want to ensure the normalized result is also zero.
+    # logically, the layer is zeroed only if the min and max are both equal to zero
+    # boolean logic deduction shows that this is equivalent to: !(vmin != 0 | vmax != 0)
+    # so we use (vmin != 0 | vmax != 0) to get a boolean tensor of the same shape as vmin/vmax, and then later multiply the tensor by it to zero out the null layers.
+    layer_is_non_zero = torch.logical_or(vmin, vmax)
+
+    # avoid division by zero for layers filled with a single constant value by adding a small epsilon to the range
+    eps = 1e-06 # torch.finfo(tensor.dtype).eps # e.g. ~1.19e-07 for float32
+    range = (vmax - vmin) + eps
+
+    # add epsilon to cause layers with a constant value to result in 1.0 after normalization
+    result = (tensor - vmin) + eps 
+    # zero out the null layers
+    result *= layer_is_non_zero
+    # normalize each [H,W] slice to [0,1]
+    result /= range
+    inv = 1.0 / ((1.0 - threshold) + eps)
+    return (result - threshold).mul(inv).clamp(min=0.0, max=1.0)
+
+@torch.no_grad()
 @torch.jit.script
 def normalize_logits(logits: torch.Tensor) -> torch.Tensor:
     """Normalize each H/W layer(separately) of the logits to the range [-1, 1]"""
