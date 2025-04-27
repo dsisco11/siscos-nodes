@@ -150,10 +150,6 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         net_logits = compare_scalar_fields(EMixingMode(self.compare_mode), pos_logits, neg_logits, self.negative_strength)
 
-        context.util.signal_progress("Normalizing results", 0.4)
-        # Normalize the values to be between 0 and 1
-        net_logits = normalize_tensor(net_logits)
-
         if (self.smoothing > 0):
             context.util.signal_progress("Smoothing results", 0.5)
             net_logits = gaussian_blur(net_logits, sigma=self.smoothing)
