@@ -57,9 +57,6 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             ESegmentationModel.GROUP_VIT: "GroupViT",
         }
     )
-    blend_mode: MixingMode = InputField(title="Prompt Mode",
-        default=EMixingMode.AVERAGE, description="How to combine prompts within the same positive/negative group amongst themselves"
-    )
     compare_mode: MixingMode = InputField(title="Comparison Mode",
         default=EMixingMode.SUPPRESS, description="How to compare the positive and negative prompts"
     )
