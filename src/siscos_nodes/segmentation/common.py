@@ -101,8 +101,8 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
             # Add all the batches together
             tensor = tensor.sum(dim=1, keepdim=True)
         case EMixingMode.MULTIPLY:
-            # Multiply all the batches together
-            tensor = tensor * tensor.mean(dim=1, keepdim=True)
+            # Multiply all the layers together
+            tensor = tensor.prod(dim=1, keepdim=True)
         case EMixingMode.MAX:
             # Take the maximum of all the batches
             tensor = tensor.amax(dim=1, keepdim=True)
