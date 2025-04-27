@@ -40,14 +40,13 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.0.1",
+    version="0.1.0",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
 
     Returns a mask which matches the positive prompt(s) and does not match the negative prompt(s).
     The resulting mask indicates the relative intensity of how strongly different areas of the image match the positive prompt(s) minus the negative prompt(s).
-
 """
 
     image: ImageField = InputField(title="Image", description="The image to segment")
@@ -65,10 +64,6 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         default=EMixingMode.SUPPRESS, description="How to compare the positive and negative prompts"
     )
     smoothing: float = InputField(default=4.0, title="Smoothing", description="Smoothing radius to apply to the raw segmentation response")
-    # mask_feathering: float = InputField(title="Mask Feathering",
-    #     default=2, description="Feathering radius for the mask. 0 means no feathering"
-    # )
-    # mask_blur: float = InputField(default=2.0, title="Mask Blur", description="Blur radius for the mask. 0 means no blur")
     min_threshold: float = InputField(title="Threshold",
         description="The minimum threshold to use for the positive/negative response. Values below this will be clipped to 0 for both",
         default=0.0,
@@ -167,20 +162,9 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         context.util.signal_progress("Upscaling mask", 0.6)
         net_logits = upscale_tensor(net_logits, target_size=image_size)
 
-        # TODO:(sisco): Fix feathering implementation
-        # if (self.mask_feathering > 0):
-        #     context.util.signal_progress("Feathering mask", 0.7)
-        #     net_logits = apply_feathering_ellipse(net_logits, self.mask_feathering)
-
-        # if (self.mask_blur > 0):
-        #     context.util.signal_progress("Blurring mask", 0.8)
-        #     net_logits = gaussian_blur(net_logits, sigma=self.mask_blur)
-
         # Squeeze the channel dimension.
         net_logits = net_logits.permute(1,0,2,3).squeeze(0)
         _, height, width = net_logits.shape
-
-        print(f"Mask shape: {net_logits.shape}")
 
         context.util.signal_progress("Finalizing mask", 0.9)
         image_out = tensor_to_pil(net_logits, mode="L")
@@ -192,9 +176,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             "blend_mode": self.compare_mode,
             "blend_factor": self.negative_strength,
             "smoothing": self.smoothing,
-            "min_threshold": self.min_threshold,
-            # "mask_feathering": self.mask_feathering,
-            # "mask_blur": self.mask_blur,
+            "min_threshold": self.min_threshold
         })
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
         context.util.signal_progress("Finished", 1)
