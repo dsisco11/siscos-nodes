@@ -100,7 +100,7 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
             if (tensor.shape[1] > 1):
                 left = tensor[0:, 0:1]
                 right = tensor[0:, 1:].sum(dim=1, keepdim=True)
-                tensor =  left.subtract(right).clamp(min=0.0) # results in [N-1, H, W]
+                tensor =  left.subtract(right)#.clamp(min=0.0) # results in [N-1, H, W]
         case EMixingMode.ADD:
             # Add all the batches together
             tensor = tensor.sum(dim=1, keepdim=True)

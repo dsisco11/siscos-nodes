@@ -40,7 +40,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.1.0",
+    version="0.2.0",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -77,7 +77,10 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             Formula: blend(mode, pos, neg * attenuation)
         """
     )
+    
+    p_blend_mode: MixingMode = InputField(title="Positive Prompt Mode", default=EMixingMode.AVERAGE, description="How to combine prompts together within the positive group")
     prompt_positive: list[str] = InputField(title="Positive Prompt", description="The positive prompt(s) to use for segmentation.\nResults from all positive prompts are combined together before being affected by the negatives.")
+    n_blend_mode: MixingMode = InputField(title="Negative Prompt Mode", default=EMixingMode.AVERAGE, description="How to combine prompts together within the negative group")
     prompt_negative: list[str] = InputField(title="Negative Prompt", description="The negative prompt(s) to use for segmentation.\nResults from all negative prompts are combined together before affecting the positives.")
     # TODO:(sisco): Add support for tiling.
     use_tiling: bool = InputField(
@@ -138,12 +141,12 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         p_logits = logits[0:pos_prompt_count].permute(1, 0, 2, 3)
         n_logits = logits[pos_prompt_count:].permute(1, 0, 2, 3)
 
-        pos_logits = collapse_scalar_fields(p_logits, self.min_threshold, EMixingMode(self.blend_mode))   # (B, 1, H₁, W₁)
+        pos_logits = collapse_scalar_fields(p_logits, self.min_threshold, EMixingMode(self.p_blend_mode))   # (B, 1, H₁, W₁)
         net_logits = pos_logits
 
         neg_logits: torch.Tensor = None
         if (neg_prompt_count > 0):
-            neg_logits = collapse_scalar_fields(n_logits, self.min_threshold, EMixingMode(self.blend_mode))  # (B, 1, H₁, W₁)
+            neg_logits = collapse_scalar_fields(n_logits, self.min_threshold, EMixingMode(self.n_blend_mode))  # (B, 1, H₁, W₁)
         else:
             neg_logits = torch.zeros_like(pos_logits)
 
