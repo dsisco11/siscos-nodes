@@ -192,7 +192,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         # endregion
         # region ===== OR =====
         pytest.param(EMixingMode.OR, 0, T222_0_0, T22_0, id="or <0, 0>, thresh=0"),
-        pytest.param(EMixingMode.OR, 0, T222_0_1, T22_0, id="or <0, 1>, thresh=0"),
+        pytest.param(EMixingMode.OR, 0, T222_0_1, T22_1, id="or <0, 1>, thresh=0"),
         pytest.param(EMixingMode.OR, 0, T222_1_0, T22_1, id="or <1, 0>, thresh=0"),
         pytest.param(EMixingMode.OR, 0, T222_1_1, T22_1, id="or <1, 1>, thresh=0"),
         pytest.param(EMixingMode.OR, 1, T222_0_0, T22_0, id="or <0, 0>, thresh=1"),
@@ -200,14 +200,13 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.OR, 1, T222_1_0, T22_0, id="or <1, 0>, thresh=1"),
         pytest.param(EMixingMode.OR, 1, T222_1_1, T22_0, id="or <1, 1>, thresh=1"),
         #
-        pytest.param(EMixingMode.OR, 0.4, T222_0_05, T22_0, id="or <0, 0.5>, thresh=0.4"),
-        pytest.param(EMixingMode.OR, 0.51, T222_0_05, T22_1, id="or <0, 0.5>, thresh=0.51"),
-        pytest.param(EMixingMode.OR, 1, T222_0_1, T22_1, id="or <0, 1>, thresh=1"),
-        pytest.param(EMixingMode.OR, 0.99, T222_0_1, T22_1, id="or <0, 1>, thresh=0.99"),
-        pytest.param(EMixingMode.OR, 1, T222_1_1, T22_1, id="or <1, 1>, thresh=1"),
+        pytest.param(EMixingMode.OR, 0.4, T222_0_05, T22_1, id="or <0, 0.5>, thresh=0.4"),
+        pytest.param(EMixingMode.OR, 0.51, T222_0_05, T22_0, id="or <0, 0.5>, thresh=0.51"),
+        pytest.param(EMixingMode.OR, 1, T222_0_1, T22_0, id="or <0, 1>, thresh=1"),
+        pytest.param(EMixingMode.OR, 1, T222_1_1, T22_0, id="or <1, 1>, thresh=1"),
         pytest.param(EMixingMode.OR, 1, T222_N1_0, T22_0, id="or <-1, 0>, thresh=1"),
         pytest.param(EMixingMode.OR, 1, T222_N1_N1, T22_0, id="or <-1, -1>, thresh=1"),
-        pytest.param(EMixingMode.OR, 1, T222_N1_1, T22_1, id="or <-1, 1>, thresh=1"),
+        pytest.param(EMixingMode.OR, 1, T222_N1_1, T22_0, id="or <-1, 1>, thresh=1"),
         # endregion
         # region ===== XOR =====
         pytest.param(EMixingMode.XOR, 0, T222_0_0, T22_0, id="xor <0, 0>, thresh=0"),

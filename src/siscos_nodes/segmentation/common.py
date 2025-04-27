@@ -116,11 +116,11 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
         case EMixingMode.AND:
             # Take the logical and of all the batches
             orig_type = tensor.dtype
-            tensor = tensor.sub(threshold).amin(dim=1, keepdim=True).gt(0.0).to(orig_type)
+            tensor = tensor.sub(threshold).gt(0.0).all(dim=1, keepdim=True).to(orig_type)
         case EMixingMode.OR:
             # Take the logical or of all the batches
             orig_type = tensor.dtype
-            tensor = tensor.sub(threshold).amax(dim=1, keepdim=True).gt(0.0).logical_or(tensor.amax(dim=1)).to(orig_type)
+            tensor = tensor.sub(threshold).gt(0.0).any(dim=1, keepdim=True).to(orig_type)
         case EMixingMode.XOR:
             # Take the exclusive or of all the batches
             orig_type = tensor.dtype
