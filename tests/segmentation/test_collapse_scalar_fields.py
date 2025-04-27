@@ -131,17 +131,17 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         # endregion
         # region ===== AVERAGE =====
         pytest.param(EMixingMode.AVERAGE, 0, T222_0_0, T22_0, id="avg <0, 0>, thresh=0"),
-        pytest.param(EMixingMode.AVERAGE, 0, T222_0_1, T22_0, id="avg <0, 1>, thresh=0"),
-        pytest.param(EMixingMode.AVERAGE, 0, T222_1_0, T22_05, id="avg <1, 0>, thresh=0"),
-        pytest.param(EMixingMode.AVERAGE, 0, T222_1_1, T22_05, id="avg <1, 1>, thresh=0"),
+        pytest.param(EMixingMode.AVERAGE, 0, T222_0_1, T22_1, id="avg <0, 1>, thresh=0"),
+        pytest.param(EMixingMode.AVERAGE, 0, T222_1_0, T22_1, id="avg <1, 0>, thresh=0"),
+        pytest.param(EMixingMode.AVERAGE, 0, T222_1_1, T22_1, id="avg <1, 1>, thresh=0"),
         pytest.param(EMixingMode.AVERAGE, 1, T222_0_0, T22_0, id="avg <0, 0>, thresh=1"),
         pytest.param(EMixingMode.AVERAGE, 1, T222_1_0, T22_0, id="avg <1, 0>, thresh=1"),
         pytest.param(EMixingMode.AVERAGE, 1, T222_0_1, T22_0, id="avg <0, 1>, thresh=1"),
         pytest.param(EMixingMode.AVERAGE, 1, T222_1_1, T22_0, id="avg <1, 1>, thresh=1"),
         pytest.param(EMixingMode.AVERAGE, 0.5, T222_0_0, T22_0, id="avg <0, 0>, thresh=0.5"),
-        pytest.param(EMixingMode.AVERAGE, 0.5, T222_0_1, T22_025, id="avg <0, 1>, thresh=0.5"),
-        pytest.param(EMixingMode.AVERAGE, 0.5, T222_1_0, T22_05, id="avg <1, 0>, thresh=0.5"),
-        pytest.param(EMixingMode.AVERAGE, 0.5, T222_1_1, T22_075, id="avg <1, 1>, thresh=0.5"),
+        pytest.param(EMixingMode.AVERAGE, 0.5, T222_0_1, T22_1, id="avg <0, 1>, thresh=0.5"),
+        pytest.param(EMixingMode.AVERAGE, 0.5, T222_1_0, T22_1, id="avg <1, 0>, thresh=0.5"),
+        pytest.param(EMixingMode.AVERAGE, 0.5, T222_1_1, T22_1, id="avg <1, 1>, thresh=0.5"),
         # endregion
         # region ===== MIN =====
         pytest.param(EMixingMode.MIN, 0, T222_0_0, T22_0, id="min <0, 0>, thresh=0"),

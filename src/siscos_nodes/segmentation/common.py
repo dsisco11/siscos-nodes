@@ -88,7 +88,7 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
     # assert tensor.dim() == 4, f"Expected tensor to have shape [B, C, H, W], but got {tensor.shape}"
     match blend_mode:
         case EMixingMode.AVERAGE:
-            tensor = tensor.mean(dim=1, keepdim=True).unsqueeze(0)
+            tensor = tensor.mean(dim=1, keepdim=True)
         case EMixingMode.SUPPRESS:
             if (tensor.shape[1] > 1):
                 tensor = tensor.clamp(min=0.0)
