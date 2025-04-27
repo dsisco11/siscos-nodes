@@ -156,7 +156,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         # endregion
         # region ===== MAX =====
         pytest.param(EMixingMode.MAX, 0, T222_0_0, T22_0, id="max <0, 0>, thresh=0"),
-        pytest.param(EMixingMode.MAX, 0, T222_0_05, T22_0, id="max <0, 0.5>, thresh=0"),
+        pytest.param(EMixingMode.MAX, 0, T222_0_05, T22_1, id="max <0, 0.5>, thresh=0"),
         pytest.param(EMixingMode.MAX, 0, T222_1_0, T22_1, id="max <1, 0>, thresh=0"),
         pytest.param(EMixingMode.MAX, 0, T222_1_05, T22_1, id="max <1, 0.5>, thresh=0"),
         pytest.param(EMixingMode.MAX, 1, T222_0_0, T22_0, id="max <0, 0>, thresh=1"),
