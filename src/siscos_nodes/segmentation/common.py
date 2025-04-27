@@ -54,7 +54,7 @@ def compare_scalar_fields(mode: EMixingMode, lhs: torch.Tensor, rhs: torch.Tenso
             inv = torch.sub(1.0, rhs, alpha=rhs_factor)
             return torch.mul(lhs, inv)
         case EMixingMode.SUBTRACT:
-            return torch.sub(lhs, rhs, alpha=rhs_factor)
+            return torch.sub(lhs, rhs, alpha=rhs_factor).clamp(min=0.0)
         case EMixingMode.ADD:
             return torch.add(lhs, rhs, alpha=rhs_factor)
         case EMixingMode.MULTIPLY:
@@ -64,10 +64,10 @@ def compare_scalar_fields(mode: EMixingMode, lhs: torch.Tensor, rhs: torch.Tenso
             return torch.mean(torch.cat((lhs, rhs * rhs_factor), dim=1), dim=1, keepdim=True)
         case EMixingMode.MAX:
             # take the maximum of the two masks
-            return torch.max(lhs, (rhs * rhs_factor))
+            return torch.max(lhs, (rhs * rhs_factor)).clamp(min=0.0)
         case EMixingMode.MIN:
             # take the minimum of the two masks
-            return torch.min(lhs, (rhs * rhs_factor))
+            return torch.min(lhs, (rhs * rhs_factor)).clamp(min=0.0)
         case EMixingMode.AND:
             orig_type = lhs.dtype
             return torch.logical_and(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor)).to(orig_type)
@@ -100,7 +100,7 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
             if (tensor.shape[1] > 1):
                 left = tensor[0:, 0:1]
                 right = tensor[0:, 1:].sum(dim=1, keepdim=True)
-                tensor =  left.subtract(right)#.clamp(min=0.0) # results in [N-1, H, W]
+                tensor =  left.subtract(right).clamp(min=0.0) # results in [N-1, H, W]
         case EMixingMode.ADD:
             # Add all the batches together
             tensor = tensor.sum(dim=1, keepdim=True)
