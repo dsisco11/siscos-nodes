@@ -69,11 +69,14 @@ def compare_scalar_fields(mode: EMixingMode, lhs: torch.Tensor, rhs: torch.Tenso
             # take the minimum of the two masks
             return torch.min(lhs, (rhs * rhs_factor))
         case EMixingMode.XOR:
-            return torch.logical_xor(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor))
+            orig_type = lhs.dtype
+            return torch.logical_xor(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor)).to(orig_type)
         case EMixingMode.OR:
-            return torch.logical_or(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor))
+            orig_type = lhs.dtype
+            return torch.logical_or(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor)).to(orig_type)
         case EMixingMode.AND:
-            return torch.logical_and(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor))
+            orig_type = lhs.dtype
+            return torch.logical_and(lhs.gt(0.0), torch.gt(rhs, 1.0 - rhs_factor)).to(orig_type)
         case _:
             raise ValueError(f"Unknown blend mode: {mode}")
 
@@ -107,13 +110,16 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
             tensor = tensor.amin(dim=1, keepdim=True)
         case EMixingMode.XOR:
             # Take the exclusive or of all the batches
-            tensor = tensor.sub(threshold).amax(dim=1).gt(0.0).logical_xor(tensor.amax(dim=1))
+            orig_type = tensor.dtype
+            tensor = tensor.sub(threshold).amax(dim=1).gt(0.0).logical_xor(tensor.amax(dim=1)).to(orig_type)
         case EMixingMode.OR:
             # Take the logical or of all the batches
-            tensor = tensor.sub(threshold).amax(dim=1).gt(0.0).logical_or(tensor.amax(dim=1))
+            orig_type = tensor.dtype
+            tensor = tensor.sub(threshold).amax(dim=1).gt(0.0).logical_or(tensor.amax(dim=1)).to(orig_type)
         case EMixingMode.AND:
             # Take the logical and of all the batches
-            tensor = tensor.sub(threshold).amax(dim=1).gt(0.0).logical_and(tensor.amax(dim=1))
+            orig_type = tensor.dtype
+            tensor = tensor.sub(threshold).amax(dim=1).gt(0.0).logical_and(tensor.amax(dim=1)).to(orig_type)
         case _:
             raise ValueError(f"Unknown blend mode: {blend_mode}")
 
