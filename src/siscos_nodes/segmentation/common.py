@@ -90,13 +90,17 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
         case EMixingMode.AVERAGE:
             tensor = tensor.mean(dim=1, keepdim=True).unsqueeze(0)
         case EMixingMode.SUPPRESS:
-            tensor = (tensor.amax(dim=1, keepdim=True) * (1 - tensor.amin(dim=1, keepdim=True)))
+            if (tensor.shape[1] > 1):
+                tensor = tensor.clamp(min=0.0)
+                left = tensor[0:, 0:1]
+                right = tensor[0:, 1:].amax(dim=1, keepdim=True)
+                tensor = left * (1 - right)
         case EMixingMode.SUBTRACT:
             # Subtract all subsequent layers from the first
-            if tensor.shape[1] > 1:
-                sum = torch.sum(tensor[0:, 1:], dim=1, keepdim=True)
-                layer_0 = tensor[0:, 0:1]
-                tensor =  layer_0.subtract(sum).clamp(min=0.0) # results in [N-1, H, W]
+            if (tensor.shape[1] > 1):
+                left = tensor[0:, 0:1]
+                right = tensor[0:, 1:].sum(dim=1, keepdim=True)
+                tensor =  left.subtract(right).clamp(min=0.0) # results in [N-1, H, W]
         case EMixingMode.ADD:
             # Add all the batches together
             tensor = tensor.sum(dim=1, keepdim=True)
