@@ -124,8 +124,10 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
         case EMixingMode.XOR:
             # Take the exclusive or of all the batches
             orig_type = tensor.dtype
-            offset = tensor.sub(threshold).clamp(min=0.0).amax(dim=1, keepdim=True)
-            tensor = offset.logical_xor(tensor.amax(dim=1)).to(orig_type)
+            # offset values by the threshold, then transform anything over 0.0 to True
+            bools = tensor.sub(threshold).gt(0.0)
+            # Compound XOR is equivalent to a summation modulus 2
+            tensor = (bools.sum(dim=1, keepdim=True) % 2).bool().to(orig_type)
         case _:
             raise ValueError(f"Unknown blend mode: {blend_mode}")
 
