@@ -94,8 +94,9 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
         case EMixingMode.SUBTRACT:
             # Subtract all subsequent layers from the first
             if tensor.shape[1] > 1:
-                sum = torch.sum(tensor[1:], dim=1, keepdim=True)
-                tensor = tensor[0:1] - sum # results in [N-1, H, W]
+                sum = torch.sum(tensor[0:, 1:], dim=1, keepdim=True)
+                layer_0 = tensor[0:, 0:1]
+                tensor =  layer_0.subtract(sum).clamp(min=0.0) # results in [N-1, H, W]
         case EMixingMode.ADD:
             # Add all the batches together
             tensor = tensor.sum(dim=1, keepdim=True)
@@ -123,6 +124,7 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
         case _:
             raise ValueError(f"Unknown blend mode: {blend_mode}")
 
+    assert tensor.shape[0] == 1 and tensor.ndim == 4, f"Expected tensor to have shape [1, 1, H, W], but got {tensor.shape}"
     # Normalize the tensor to be between 0 and 1
     result = threshold_and_normalize_tensor(tensor, threshold)
 
