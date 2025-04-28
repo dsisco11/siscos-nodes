@@ -175,9 +175,9 @@ def test_compare_scalar_fields(mode: EMixingMode, strength: float, lhs: float, r
     Test the _compare_prompts function with different modes and strengths.
     """
     # Prepare the input tensors
-    tensor_1 = torch.full((1, 1, 4, 4), lhs, dtype=torch.float32)
-    tensor_2 = torch.full((1, 1, 4, 4), rhs, dtype=torch.float32)
-    expected = torch.full((1, 1, 4, 4), expected_value, dtype=torch.float32)
+    tensor_1 = torch.full((1, 1, 2, 2), lhs, dtype=torch.float32)
+    tensor_2 = torch.full((1, 1, 2, 2), rhs, dtype=torch.float32)
+    expected = torch.full((1, 1, 2, 2), expected_value, dtype=torch.float32)
 
     # Call the function under test
     result = compare_scalar_fields(mode, tensor_1, tensor_2, strength)
