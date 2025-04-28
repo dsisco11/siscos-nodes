@@ -20,7 +20,6 @@ from siscos_nodes.src.siscos_nodes.util.primitives import (
 )
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
     gaussian_blur,
-    normalize_tensor,
     upscale_tensor,
 )
 
@@ -40,7 +39,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.2.0",
+    version="0.2.1",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -57,8 +56,9 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             ESegmentationModel.GROUP_VIT: "GroupViT",
         }
     )
-    compare_mode: MixingMode = InputField(title="Comparison Mode",
-        default=EMixingMode.SUPPRESS, description="How to compare the positive and negative prompts"
+    # TODO:(sisco): Add support for tiling.
+    use_tiling: bool = InputField(
+        default=False, title="Use Tiling", description="Whether to use tiling for larger images. This will split the image into tiles and process each tile separately."
     )
     smoothing: float = InputField(default=4.0, title="Smoothing", description="Smoothing radius to apply to the raw segmentation response")
     min_threshold: float = InputField(title="Threshold",
@@ -75,13 +75,12 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         """
     )
     
-    p_blend_mode: MixingMode = InputField(title="Positive Prompt Mode", default=EMixingMode.AVERAGE, description="How to combine prompts together within the positive group")
+    p_blend_mode: MixingMode = InputField(title="Positive Blending Mode", default=EMixingMode.AVERAGE, description="How to combine the positive prompts together")
     prompt_positive: list[str] = InputField(title="Positive Prompt", description="The positive prompt(s) to use for segmentation.\nResults from all positive prompts are combined together before being affected by the negatives.")
-    n_blend_mode: MixingMode = InputField(title="Negative Prompt Mode", default=EMixingMode.AVERAGE, description="How to combine prompts together within the negative group")
+    n_blend_mode: MixingMode = InputField(title="Negative Blending Mode", default=EMixingMode.AVERAGE, description="How to combine the negative prompts together")
     prompt_negative: list[str] = InputField(title="Negative Prompt", description="The negative prompt(s) to use for segmentation.\nResults from all negative prompts are combined together before affecting the positives.")
-    # TODO:(sisco): Add support for tiling.
-    use_tiling: bool = InputField(
-        default=False, title="Use Tiling", description="Whether to use tiling for larger images. This will split the image into tiles and process each tile separately."
+    compare_mode: MixingMode = InputField(title="Comparison Mode",
+        default=EMixingMode.SUPPRESS, description="How the negatives affect the positives.\nThis is the blend mode used to combine the positive and negative masks together.",
     )
 
     @torch.no_grad()
