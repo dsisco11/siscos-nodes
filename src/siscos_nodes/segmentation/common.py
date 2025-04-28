@@ -61,7 +61,7 @@ def compare_scalar_fields(mode: EMixingMode, lhs: torch.Tensor, rhs: torch.Tenso
             return torch.mul(lhs, (rhs * rhs_factor))
         case EMixingMode.AVERAGE:
             # average the two masks together
-            return torch.mean(torch.cat((lhs, rhs * rhs_factor), dim=1), dim=1, keepdim=True)
+            return torch.mean(torch.cat((lhs, rhs * rhs_factor), dim=0), dim=0, keepdim=True)
         case EMixingMode.MAX:
             # take the maximum of the two masks
             return torch.max(lhs, (rhs * rhs_factor)).clamp(min=0.0)
@@ -84,50 +84,50 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
     """Collapse all 2D scalar fields in the tensor into a single layer using the specified blending mode."""
     # For these blending modes, we apply the logic across the channel dimension.
     # This is done to combine the results of multiple prompts into a single mask.
-    assert tensor.dim() == 4, f"Expected tensor to have 4 dimensions, but got {tensor.ndim}"
-    # assert tensor.dim() == 4, f"Expected tensor to have shape [B, C, H, W], but got {tensor.shape}"
+    assert tensor.dim() == 4, f"Expected tensor to have 4 dimensions, but got {tensor.dim()}"
+    assert tensor.shape[1] == 1, f"Expected tensor to have shape [N, 1, H, W], but got {tensor.shape}"
     match blend_mode:
         case EMixingMode.AVERAGE:
-            tensor = tensor.mean(dim=1, keepdim=True)
+            tensor = tensor.mean(dim=0, keepdim=True)
         case EMixingMode.SUPPRESS:
-            if (tensor.shape[1] > 1):
+            if (tensor.shape[0] > 1):
                 tensor = tensor.clamp(min=0.0)
-                left = tensor[0:, 0:1]
-                right = tensor[0:, 1:].amax(dim=1, keepdim=True)
+                left = tensor[0:1]
+                right = tensor[1:].amax(dim=0, keepdim=True)
                 tensor = left * (1 - right)
         case EMixingMode.SUBTRACT:
             # Subtract all subsequent layers from the first
-            if (tensor.shape[1] > 1):
-                left = tensor[0:, 0:1]
-                right = tensor[0:, 1:].sum(dim=1, keepdim=True)
-                tensor =  left.subtract(right).clamp(min=0.0) # results in [N-1, H, W]
+            if (tensor.shape[0] > 1):
+                left = tensor[0:1]
+                right = tensor[1:].sum(dim=0, keepdim=True)
+                tensor = left.subtract(right).clamp(min=0.0)
         case EMixingMode.ADD:
             # Add all the batches together
-            tensor = tensor.sum(dim=1, keepdim=True)
+            tensor = tensor.sum(dim=0, keepdim=True)
         case EMixingMode.MULTIPLY:
             # Multiply all the layers together
-            tensor = tensor.prod(dim=1, keepdim=True)
+            tensor = tensor.prod(dim=0, keepdim=True)
         case EMixingMode.MAX:
             # Take the maximum of all the batches
-            tensor = tensor.amax(dim=1, keepdim=True)
+            tensor = tensor.amax(dim=0, keepdim=True)
         case EMixingMode.MIN:
             # Take the minimum of all the batches
-            tensor = tensor.amin(dim=1, keepdim=True)
+            tensor = tensor.amin(dim=0, keepdim=True)
         case EMixingMode.AND:
             # Take the logical and of all the batches
             orig_type = tensor.dtype
-            tensor = tensor.sub(threshold).gt(0.0).all(dim=1, keepdim=True).to(orig_type)
+            tensor = tensor.sub(threshold).gt(0.0).all(dim=0, keepdim=True).to(orig_type)
         case EMixingMode.OR:
             # Take the logical or of all the batches
             orig_type = tensor.dtype
-            tensor = tensor.sub(threshold).gt(0.0).any(dim=1, keepdim=True).to(orig_type)
+            tensor = tensor.sub(threshold).gt(0.0).any(dim=0, keepdim=True).to(orig_type)
         case EMixingMode.XOR:
             # Take the exclusive or of all the batches
             orig_type = tensor.dtype
             # offset values by the threshold, then transform anything over 0.0 to True
             bools = tensor.sub(threshold).gt(0.0)
             # Compound XOR is equivalent to a summation modulus 2
-            tensor = (bools.sum(dim=1, keepdim=True) % 2).bool().to(orig_type)
+            tensor = (bools.sum(dim=0, keepdim=True) % 2).bool().to(orig_type)
         case _:
             raise ValueError(f"Unknown blend mode: {blend_mode}")
 
@@ -135,5 +135,4 @@ def collapse_scalar_fields(tensor: torch.Tensor, threshold: float, blend_mode: E
     # Normalize the tensor to be between 0 and 1
     result = threshold_and_normalize_tensor(tensor, threshold)
 
-    assert result.shape[0] == 1 and result.ndim == 4, f"Expected tensor to have shape [1, 1, H, W], but got {result.shape}"
     return result

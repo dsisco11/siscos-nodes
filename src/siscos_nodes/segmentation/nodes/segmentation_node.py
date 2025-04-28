@@ -135,8 +135,8 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         # === Normalization ===
         # The logits are normalized to be between 0 and 1, both before and after the blend.
         # This is done to ensure that the values are representative of the relative intensity of each mask.
-        p_logits = logits[0:pos_prompt_count].permute(1, 0, 2, 3)
-        n_logits = logits[pos_prompt_count:].permute(1, 0, 2, 3)
+        p_logits = logits[0:pos_prompt_count]#.permute(1, 0, 2, 3)
+        n_logits = logits[pos_prompt_count:]#.permute(1, 0, 2, 3)
 
         pos_logits = collapse_scalar_fields(p_logits, self.min_threshold, EMixingMode(self.p_blend_mode))   # (B, 1, H₁, W₁)
         net_logits = pos_logits
