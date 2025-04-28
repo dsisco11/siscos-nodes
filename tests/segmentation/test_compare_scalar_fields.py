@@ -30,10 +30,10 @@ from siscos_nodes.src.siscos_nodes.segmentation.nodes.segmentation_node import (
         (EMixingMode.SUBTRACT, 0, 1, 1, 1),
         (EMixingMode.SUBTRACT, 1, 0, 0, 0),
         (EMixingMode.SUBTRACT, 1, 1, 0, 1),
-        (EMixingMode.SUBTRACT, 1, 0, 1, -1),
+        (EMixingMode.SUBTRACT, 1, 0, 1, 0),
         (EMixingMode.SUBTRACT, 1, 1, 1, 0),
         (EMixingMode.SUBTRACT, 0.5, 0, 0, 0),
-        (EMixingMode.SUBTRACT, 0.5, 0, 1, -0.5),
+        (EMixingMode.SUBTRACT, 0.5, 0, 1, 0),
         (EMixingMode.SUBTRACT, 0.5, 1, 0, 1),
         (EMixingMode.SUBTRACT, 0.5, 1, 1, 0.5),
         # ===== MULTIPLY =====
