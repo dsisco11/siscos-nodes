@@ -9,7 +9,7 @@ from siscos_nodes.src.siscos_nodes.segmentation.common import (
 )
 
 # region: constants
-# 1x1x2x2 tensors
+# region 1x1x2x2 tensors
 T22_P_NORM: Final = torch.tensor([[[[0.0, 0.3333], [0.6667, 1.0]]]])
 T22_P_NORM_2: Final = torch.tensor([[[[0.0, 0.0], [0.3333, 1.0]]]])
 T22_PN_NORM: Final = torch.tensor([[[[-1.0, -0.3333], [0.3333, 1.0]]]])
@@ -29,8 +29,9 @@ T22_1_0: Final = torch.tensor([[[[1.0, 1.0], [0.0, 0.0]]]])
 T22_1_1: Final = torch.tensor([[[[1.0, 1.0], [1.0, 1.0]]]])
 T22_0_05: Final = torch.tensor([[[[0.0, 0.0], [0.5, 0.5]]]])
 T22_1_05: Final = torch.tensor([[[[1.0, 1.0], [0.5, 0.5]]]])
+# endregion
 
-# 1x2x2x2 tensors
+# region 1x2x2x2 tensors
 T222_P_NORM: Final = torch.tensor([[[[0.0, 0.3333], [0.6667, 1.0]], [[0.0, 0.3333], [0.6667, 1.0]]]])
 T222_0_0: Final = torch.tensor([[[[0.0, 0.0], [0.0, 0.0]], [[0.0, 0.0], [0.0, 0.0]]]])
 T222_0_1: Final = torch.tensor([[[[0.0, 0.0], [0.0, 0.0]], [[1.0, 1.0], [1.0, 1.0]]]])
@@ -45,8 +46,9 @@ T222_N1_0: Final = torch.tensor([[[[-1.0, -1.0], [-1.0, -1.0]], [[0.0, 0.0], [0.
 T222_N1_N1: Final = torch.tensor([[[[-1.0, -1.0], [-1.0, -1.0]], [[-1.0, -1.0], [-1.0, -1.0]]]])
 T222_1_N1: Final = torch.tensor([[[[1.0, 1.0], [1.0, 1.0]], [[-1.0, -1.0], [-1.0, -1.0]]]])
 T222_N1_1: Final = torch.tensor([[[[-1.0, -1.0], [-1.0, -1.0]], [[1.0, 1.0], [1.0, 1.0]]]])
+# endregion
 
-# 1x4x2x2 tensors
+# region 1x4x2x2 tensors
 T422_P_NORM: Final = torch.tensor([[[[0.0, 0.3333], [0.6667, 1.0]], [[0.0, 0.3333], [0.6667, 1.0]], [[0.0, 0.3333], [0.6667, 1.0]], [[0.0, 0.3333], [0.6667, 1.0]]]])
 T422_P_NORM_2: Final = torch.tensor([[[[0.0, 0.0], [0.3333, 1.0]], [[0.0, 0.0], [0.3333, 1.0]], [[0.0, 0.0], [0.3333, 1.0]], [[0.0, 0.0], [0.3333, 1.0]]]])
 T422_PN_NORM: Final = torch.tensor([[[[-1.0, -0.3333], [0.3333, 1.0]], [[-1.0, -0.3333], [0.3333, 1.0]], [[-1.0, -0.3333], [0.3333, 1.0]], [[-1.0, -0.3333], [0.3333, 1.0]]]])
@@ -55,6 +57,7 @@ T422_1_1_1_1: Final = torch.fill(torch.empty(1, 4, 2, 2), 1.0)
 T422_2_2_2_2: Final = torch.fill(torch.empty(1, 4, 2, 2), 2.0)
 T422_INC_0: Final = torch.tensor([[[[0.0, 1.0], [2.0, 3.0]], [[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[5.0, 6.0], [7.0, 8.0]]]])
 T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]], [[5.0, 6.0], [7.0, 8.0]]]])
+# endregion
 # endregion: constants
 
 
@@ -62,7 +65,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
 @pytest.mark.parametrize(
     "mode, threshold, input, expected",
     [
-        # region ===== ADD =====
+        # region ADD
         # simple test cases
         pytest.param(EMixingMode.ADD, 0, T222_0_0, T22_0, id="add <0, 0>, thresh=0"),
         pytest.param(EMixingMode.ADD, 0, T222_0_1, T22_1, id="add <0, 1>, thresh=0"),
@@ -81,7 +84,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         # complex test cases
         pytest.param(EMixingMode.ADD, 0, T222_0_0, T22_0, id="add <0, 0>, thresh=0 (complex)"),
         # endregion
-        # region ===== SUBTRACT =====
+        # region SUBTRACT
         pytest.param(EMixingMode.SUBTRACT, 0, T222_0_0, T22_0, id="sub <0, 0>, thresh=0"),
         pytest.param(EMixingMode.SUBTRACT, 0, T222_0_1, T22_0, id="sub <0, 1>, thresh=0"),
         pytest.param(EMixingMode.SUBTRACT, 0, T222_1_0, T22_1, id="sub <1, 0>, thresh=0"),
@@ -95,7 +98,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.SUBTRACT, 0.5, T222_1_0, T22_1, id="sub <1, 0>, thresh=0.5"),
         pytest.param(EMixingMode.SUBTRACT, 0.5, T222_1_1, T22_0, id="sub <1, 1>, thresh=0.5"),
         # endregion
-        # region ===== MULTIPLY =====
+        # region MULTIPLY
         pytest.param(EMixingMode.MULTIPLY, 0, T222_0_0, T22_0, id="mul <0, 0>, thresh=0"),
         pytest.param(EMixingMode.MULTIPLY, 0, T222_0_1, T22_0, id="mul <0, 1>, thresh=0"),
         pytest.param(EMixingMode.MULTIPLY, 0, T222_1_0, T22_0, id="mul <1, 0>, thresh=0"),
@@ -109,7 +112,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.MULTIPLY, 0.5, T222_1_0, T22_0, id="mul <1, 0>, thresh=0.5"),
         pytest.param(EMixingMode.MULTIPLY, 0.5, T222_1_1, T22_1, id="mul <1, 1>, thresh=0.5"),
         # endregion
-        # region ===== SUPPRESS =====
+        # region SUPPRESS
         pytest.param(EMixingMode.SUPPRESS, 0, T222_0_0, T22_0, id="sup <0, 0>, thresh=0"),
         pytest.param(EMixingMode.SUPPRESS, 0, T222_0_1, T22_0, id="sup <0, 1>, thresh=0"),
         pytest.param(EMixingMode.SUPPRESS, 0, T222_1_0, T22_1, id="sup <1, 0>, thresh=0"),
@@ -129,7 +132,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         # 
         pytest.param(EMixingMode.SUPPRESS, 0, T222_0_N1, T22_0, id="sup <0, -1>, thresh=0"),
         # endregion
-        # region ===== AVERAGE =====
+        # region AVERAGE
         pytest.param(EMixingMode.AVERAGE, 0, T222_0_0, T22_0, id="avg <0, 0>, thresh=0"),
         pytest.param(EMixingMode.AVERAGE, 0, T222_0_1, T22_1, id="avg <0, 1>, thresh=0"),
         pytest.param(EMixingMode.AVERAGE, 0, T222_1_0, T22_1, id="avg <1, 0>, thresh=0"),
@@ -143,7 +146,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.AVERAGE, 0.5, T222_1_0, T22_1, id="avg <1, 0>, thresh=0.5"),
         pytest.param(EMixingMode.AVERAGE, 0.5, T222_1_1, T22_1, id="avg <1, 1>, thresh=0.5"),
         # endregion
-        # region ===== MIN =====
+        # region MIN
         pytest.param(EMixingMode.MIN, 0, T222_0_0, T22_0, id="min <0, 0>, thresh=0"),
         pytest.param(EMixingMode.MIN, 0, T222_0_1, T22_0, id="min <0, 1>, thresh=0"),
         pytest.param(EMixingMode.MIN, 0, T222_1_0, T22_0, id="min <1, 0>, thresh=0"),
@@ -154,7 +157,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.MIN, 1, T222_0_05, T22_0, id="min <0, 0.5>, thresh=1"),
         pytest.param(EMixingMode.MIN, 1, T222_1_05, T22_0, id="min <1, 0.5>, thresh=1"),
         # endregion
-        # region ===== MAX =====
+        # region MAX
         pytest.param(EMixingMode.MAX, 0, T222_0_0, T22_0, id="max <0, 0>, thresh=0"),
         pytest.param(EMixingMode.MAX, 0, T222_0_05, T22_1, id="max <0, 0.5>, thresh=0"),
         pytest.param(EMixingMode.MAX, 0, T222_1_0, T22_1, id="max <1, 0>, thresh=0"),
@@ -164,7 +167,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.MAX, 1, T222_0_05, T22_0, id="max <0, 0.5>, thresh=1"),
         pytest.param(EMixingMode.MAX, 1, T222_1_05, T22_0, id="max <1, 0.5>, thresh=1"),
         # endregion
-        # region ===== AND =====
+        # region AND
         pytest.param(EMixingMode.AND, 0, T222_0_0, T22_0, id="and <0, 0>, thresh=0"),
         pytest.param(EMixingMode.AND, 0, T222_0_1, T22_0, id="and <0, 1>, thresh=0"),
         pytest.param(EMixingMode.AND, 0, T222_1_0, T22_0, id="and <1, 0>, thresh=0"),
@@ -190,7 +193,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.AND, 1, T222_1_N1, T22_0, id="and <1, -1>, thresh=1"),
         pytest.param(EMixingMode.AND, 1, T222_N1_1, T22_0, id="and <-1, 1>, thresh=1"),
         # endregion
-        # region ===== OR =====
+        # region OR
         pytest.param(EMixingMode.OR, 0, T222_0_0, T22_0, id="or <0, 0>, thresh=0"),
         pytest.param(EMixingMode.OR, 0, T222_0_1, T22_1, id="or <0, 1>, thresh=0"),
         pytest.param(EMixingMode.OR, 0, T222_1_0, T22_1, id="or <1, 0>, thresh=0"),
@@ -208,7 +211,7 @@ T422_INC_1: Final = torch.tensor([[[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 
         pytest.param(EMixingMode.OR, 1, T222_N1_N1, T22_0, id="or <-1, -1>, thresh=1"),
         pytest.param(EMixingMode.OR, 1, T222_N1_1, T22_0, id="or <-1, 1>, thresh=1"),
         # endregion
-        # region ===== XOR =====
+        # region XOR
         pytest.param(EMixingMode.XOR, 0, T222_0_0, T22_0, id="xor <0, 0>, thresh=0"),
         pytest.param(EMixingMode.XOR, 0, T222_0_1, T22_1, id="xor <0, 1>, thresh=0"),
         pytest.param(EMixingMode.XOR, 0, T222_1_0, T22_1, id="xor <1, 0>, thresh=0"),
