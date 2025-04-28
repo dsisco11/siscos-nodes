@@ -169,13 +169,16 @@ def normalize_logits(logits: torch.Tensor) -> torch.Tensor:
     """Normalize each H/W layer(separately) of the logits to the range [-1, 1]"""
     assert logits.ndim == 3, "Input tensor must be 3D (batch, height, width)."
     # compute per‐slice min and max, keeping dims so they broadcast over H,W
-    vmin = logits.amin(dim=(1,2), keepdim=True)   # shape [N,1,1]
-    vmax = logits.amax(dim=(1,2), keepdim=True)   # shape [N,1,1]
+    ih = logits.dim() - 2
+    iw = ih + 1
+    vmin = logits.amin(dim=(ih, iw), keepdim=True)   # shape [N,1,1]
+    vmax = logits.amax(dim=(ih, iw), keepdim=True)   # shape [N,1,1]
 
-    # avoid division by zero if a slice is constant
-    range = vmax - vmin
-    range[range == 0] = 1e-6
+    # avoid division by zero for layers filled with a single constant value by adding a small epsilon to the range
+    eps = 1e-06 # torch.finfo(tensor.dtype).eps # e.g. ~1.19e-07 for float32
+    range = (vmax - vmin) + eps
 
     # normalize each [H,W] slice to [0,1]
-    norm = (logits - vmin) / range
-    return (norm * 2.0) - 1.0 # scale to [-1, 1]
+    result = (logits - vmin) + eps
+    result /= range
+    return (result * 2.0) - 1.0 # scale to [-1, 1]
