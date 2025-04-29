@@ -40,7 +40,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.4.0",
+    version="0.5.0",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -110,17 +110,13 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         title="Comparison Mode",
         default=EMixingMode.SUPPRESS, description="How the negatives affect the positives.\nThis is the blend mode used to combine the positive and negative masks together.",
     )
-    final_contrast: float = InputField(
+    confidence_threshold: float = InputField(
         ui_order=11,
-        title="Contrast", default=1.0, description="The contrast to apply to the final mask.\nThis is applied as a power function to the final grayscale mask.\nA value of 1.0 will not change the contrast, while a value of 0.0 will make the mask completely flat.\nA value of 2.0 will double the contrast, and a value of 0.5 will halve the contrast."
+        title="Confidence Threshold", default=1.0, description=""
     )
-    min_confidence_threshold: float = InputField(
+    final_contrast: float = InputField(
         ui_order=12,
-        title="Minimum Confidence", default=0.0, description=""
-    )
-    max_confidence_threshold: float = InputField(
-        ui_order=13,
-        title="Maximum Confidence", default=1.0, description=""
+        title="Contrast", default=1.0, description="The contrast to apply to the final mask.\nThis is applied as a power function to the final grayscale mask.\nA value of 1.0 will not change the contrast, while a value of 0.0 will make the mask completely flat.\nA value of 2.0 will double the contrast, and a value of 0.5 will halve the contrast."
     )
 
     @torch.no_grad()
@@ -190,17 +186,14 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         if (self.smoothing > 0):
             context.util.signal_progress("Smoothing results", 0.5)
-            net_logits = gaussian_blur(net_logits, sigma=self.smoothing)
+            net_logits = normalize_tensor(gaussian_blur(net_logits, sigma=self.smoothing))
+
+        if (self.confidence_threshold < 1.0):
+            net_logits = normalize_tensor(net_logits.clamp_max(self.confidence_threshold))
 
         if (self.final_contrast != 1.0):
             context.util.signal_progress("Adjusting contrast", 0.7)
-            net_logits = torch.pow(net_logits, self.final_contrast)
-
-        if (self.min_confidence_threshold > 0 or self.max_confidence_threshold < 1.0):
-            net_logits = torch.clamp(net_logits, min=self.min_confidence_threshold, max=self.max_confidence_threshold)
-
-        # Normalize the logits to be between 0 and 1
-        net_logits = normalize_tensor(net_logits)
+            net_logits = normalize_tensor(net_logits.pow(self.final_contrast))
 
         # Upscale the mask tensor to the original image size
         context.util.signal_progress("Upscaling mask", 0.6)
@@ -225,8 +218,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             "prompt_negative": self.prompt_negative,
             "compare_mode": self.compare_mode,
             "final_contrast": self.final_contrast,
-            "min_confidence_threshold": self.min_confidence_threshold,
-            "max_confidence_threshold": self.max_confidence_threshold,
+            "confidence_threshold": self.confidence_threshold,
         })
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
         context.util.signal_progress("Finished", 1)
