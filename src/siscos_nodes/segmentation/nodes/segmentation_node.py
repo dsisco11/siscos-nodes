@@ -152,24 +152,6 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         logits = model.execute(context, image_in, prompts=_prompts)
         context.util.signal_progress("Processing results", 0.2)
 
-        # === Overview ===
-        # For both the positive & negative prompt lists, we take the mean of the logits across all of the prompts in said list.
-        # This allows us to combine multiple isolated concepts into a single mask.
-        # This is distinct from adding multiple concepts into a single prompt, which causes the model to produce a single mask which is a GRADIENT of all of the concepts.
-        # Meaning that for a single prompt with multiple concepts, the first concept will be the most prominent and the last concept will be the least prominent.
-        # So in order to provide more control over how multiple concepts interact, we provide this ability to "average" multiple concepts together.
-        #
-        # === Positive/Negative ===
-        # In simple terms, the positive prompt list is what we want to see in the mask, and the negative prompt list is what we don't want to see in the mask.
-        # The manner in which negative impacts positive is determined by the blend mode.
-        #   "subtract" means that the negative mask is subtracted from the positive mask.
-        #   "suppress" means that the positive mask is multiplied by the inverse of the negative mask.
-        #       Which means the positive will be suppressed by the negative, but not completely removed.
-        #   The other blend modes should be obvious from their names.
-        #
-        # === Normalization ===
-        # The logits are normalized to be between 0 and 1, both before and after the blend.
-        # This is done to ensure that the values are representative of the relative intensity of each mask.
         p_logits = logits[0:pos_prompt_count]#.permute(1, 0, 2, 3)
         n_logits = logits[pos_prompt_count:]#.permute(1, 0, 2, 3)
 
