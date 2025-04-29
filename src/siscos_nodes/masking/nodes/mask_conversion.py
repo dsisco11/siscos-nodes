@@ -1,9 +1,10 @@
 
-from typing import Tuple, Union
+from ast import TypeAlias
+from typing import Any, Tuple, Union
 
 import torch
 from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
-from invokeai.app.invocations.fields import ImageField, InputField, TensorField
+from invokeai.app.invocations.fields import ImageField, InputField, TensorField, UIType
 from invokeai.app.services.shared.invocation_context import (
     ImageCategory,
     InvocationContext,
@@ -19,18 +20,19 @@ from ...util.primitives import (
 )
 from ...util.tensor_common import apply_feathering_ellipse
 
+MaskLike = MaskingField | TensorField | ImageField
 
 @invocation(
     "convert_mask",
     title="Convert Mask",
     tags=["mask", "convert"],
     category="mask",
-    version="0.1.0",
+    version="0.1.1",
 )
 class ConvertMaskInvocation(BaseInvocation):
     """Converts a gradient mask into a bit mask."""
 
-    mask: Union[MaskingField, TensorField, ImageField] = InputField(title="Mask")
+    mask: MaskLike = InputField(title="Mask", ui_type=UIType.Any)
     mode: LMaskingMode = InputField(title="Mode", default=EMaskingMode.GRADIENT)
     strength: float = InputField(title="Strength", default=0.25, description="Strength of the conversion.\nE.g: when converting TO a bool-mask, this is the threshold.\nWhen converting FROM a bool-mask, this is the feathering distance.")
 
