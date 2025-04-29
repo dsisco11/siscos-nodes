@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 from invokeai.app.invocations.baseinvocation import (
@@ -29,9 +29,17 @@ class MaskingField(BaseModel):
     asset_id: str = Field(description="The id/name of the mask image within the asset cache system.")
     mode: EMaskingMode = Field(description="The masking mode specifies how the mask is represented.")
 
-    def __init__(self, asset_id: str, mode: EMaskingMode):
+    def __init__(self, mode: EMaskingMode, asset_id: str | None = None, image_name: str | None = None, tensor_name: str | None = None):
         """Initialize the MaskingField with an asset ID and mode."""
-        super().__init__(asset_id=asset_id, mode=mode)
+        if (asset_id is None and image_name is None and tensor_name is None):
+            raise ValueError("Either asset_id, image_name or tensor_name must be provided.")
+        
+        # Use the first non-None value
+        _id: str = asset_id or image_name or tensor_name # type: ignore
+        if not _id:
+            raise ValueError("Either asset_id, image_name or tensor_name must be provided.")
+        
+        super().__init__(asset_id=_id, mode=mode)
 
     def load(self, context: InvocationContext) -> torch.Tensor:
         """Load the mask from the asset cache."""

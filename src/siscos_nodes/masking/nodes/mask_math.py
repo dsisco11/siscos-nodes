@@ -63,11 +63,11 @@ class MaskMathOperationInvocation(BaseInvocation):
             case EMathOperators.MIN:
                 mask_in = torch.min(lhs, rhs)
             case EMathOperators.XOR:
-                mask_in = torch.bitwise_xor(lhs, rhs)
+                mask_in = torch.logical_xor(lhs, rhs)
             case EMathOperators.OR:
-                mask_in = torch.bitwise_or(lhs, rhs)
+                mask_in = torch.logical_or(lhs, rhs)
             case EMathOperators.AND:
-                mask_in = torch.bitwise_and(lhs, rhs)
+                mask_in = torch.logical_and(lhs, rhs)
             case _:
                 raise ValueError(f"Unsupported operation: {self.operation}")
 
