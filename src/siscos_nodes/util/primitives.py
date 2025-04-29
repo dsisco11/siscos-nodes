@@ -36,7 +36,7 @@ class MaskingField(BaseModel):
     def load(self, context: InvocationContext) -> torch.Tensor:
         """Load the mask from the asset cache."""
         match (self.mode):
-            case EMaskingMode.BOOLEAN | EMaskingMode.GRADIENT | EMaskingMode.UINT8 | EMaskingMode.UINT16:
+            case EMaskingMode.BOOLEAN | EMaskingMode.GRADIENT:
                 return context.tensors.load(self.asset_id)
             case EMaskingMode.IMAGE_LUMINANCE:
                 return image_to_tensor(context.images.get_pil(self.asset_id, mode='L'))
