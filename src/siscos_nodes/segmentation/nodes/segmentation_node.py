@@ -20,6 +20,7 @@ from siscos_nodes.src.siscos_nodes.util.primitives import (
 )
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
     gaussian_blur,
+    normalize_tensor,
     upscale_tensor,
 )
 
@@ -39,7 +40,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.3.0",
+    version="0.4.0",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -113,6 +114,14 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         ui_order=11,
         title="Contrast", default=1.0, description="The contrast to apply to the final mask.\nThis is applied as a power function to the final grayscale mask.\nA value of 1.0 will not change the contrast, while a value of 0.0 will make the mask completely flat.\nA value of 2.0 will double the contrast, and a value of 0.5 will halve the contrast."
     )
+    min_confidence_threshold: float = InputField(
+        ui_order=12,
+        title="Minimum Confidence", default=0.0, description=""
+    )
+    max_confidence_threshold: float = InputField(
+        ui_order=13,
+        title="Maximum Confidence", default=1.0, description=""
+    )
 
     @torch.no_grad()
     def invoke(self, context: InvocationContext) -> AdvancedMaskOutput:
@@ -185,7 +194,13 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         if (self.final_contrast != 1.0):
             context.util.signal_progress("Adjusting contrast", 0.7)
-            net_logits = torch.pow(net_logits, self.final_contrast).clamp(min=0.0, max=1.0)
+            net_logits = torch.pow(net_logits, self.final_contrast)
+
+        if (self.min_confidence_threshold > 0 or self.max_confidence_threshold < 1.0):
+            net_logits = torch.clamp(net_logits, min=self.min_confidence_threshold, max=self.max_confidence_threshold)
+
+        # Normalize the logits to be between 0 and 1
+        net_logits = normalize_tensor(net_logits)
 
         # Upscale the mask tensor to the original image size
         context.util.signal_progress("Upscaling mask", 0.6)
@@ -200,12 +215,18 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         _metadata = MetadataField({
             "origin": self.image.image_name,
             "segmentation_model": self.model_type,
-            "positive_prompt": self.prompt_positive,
-            "negative_prompt": self.prompt_negative,
-            "blend_mode": self.compare_mode,
-            "blend_factor": self.negative_strength,
+            "use_tiling": self.use_tiling,
             "smoothing": self.smoothing,
-            "min_threshold": self.min_threshold
+            "min_threshold": self.min_threshold,
+            "negative_strength": self.negative_strength,
+            "p_blend_mode": self.p_blend_mode,
+            "prompt_positive": self.prompt_positive,
+            "n_blend_mode": self.n_blend_mode,
+            "prompt_negative": self.prompt_negative,
+            "compare_mode": self.compare_mode,
+            "final_contrast": self.final_contrast,
+            "min_confidence_threshold": self.min_confidence_threshold,
+            "max_confidence_threshold": self.max_confidence_threshold,
         })
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
         context.util.signal_progress("Finished", 1)
