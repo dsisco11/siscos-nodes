@@ -136,7 +136,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         model: SegmentationModel = SEGMENTATION_MODEL_TYPES[ESegmentationModel(self.model_type)]()
         attn_mask: Optional[torch.Tensor] = None
         if self.attention_mask is not None:
-            attn_mask = self.attention_mask.load(context)
+            attn_mask = self.attention_mask.load(context).unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
             # match the attention mask to the input image size
             if attn_mask.shape[0:1] != image_size:
                 attn_mask = upscale_tensor(attn_mask, target_size=image_size)
