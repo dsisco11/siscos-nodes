@@ -74,13 +74,13 @@ class CLIPSegSegmentationModel(SegmentationModel):
     def _load_from_path(model_path: Path) -> CLIPSegPipeline:
         _model = CLIPSegForImageSegmentation.from_pretrained(model_path,
             local_files_only=True,
-            # TODO:(sisco): Setting the torch_dtype here doesn't work. It causes the model to complain that the imput tensors aren't of the same type.
+            # TODO:(sisco): Setting the torch_dtype here doesn't work. It causes the model to complain that the input tensors aren't of the same type.
             # torch_dtype=TorchDevice.choose_torch_dtype()
         )
         assert isinstance(_model, CLIPSegForImageSegmentation), "Model is not a CLiPSeg model."
 
         _processor = CLIPSegProcessor.from_pretrained(model_path, local_files_only=True,
-            # TODO:(sisco): Setting the torch_dtype here doesn't work. It causes the model to complain that the imput tensors aren't of the same type.
+            # TODO:(sisco): Setting the torch_dtype here doesn't work. It causes the model to complain that the input tensors aren't of the same type.
             # torch_dtype=TorchDevice.choose_torch_dtype()
         )
         return CLIPSegPipeline(model=_model, processor=_processor)
