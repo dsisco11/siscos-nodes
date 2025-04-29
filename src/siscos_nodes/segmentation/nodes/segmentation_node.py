@@ -137,6 +137,9 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         attn_mask: Optional[torch.Tensor] = None
         if self.attention_mask is not None:
             attn_mask = self.attention_mask.load(context)
+            # match the attention mask to the input image size
+            if attn_mask.shape[0:1] != image_size:
+                attn_mask = upscale_tensor(attn_mask, target_size=image_size)
 
         # If we have no prompts, we can skip the model call and just return a blank mask.
         if (pos_prompt_count == 0 and neg_prompt_count == 0):
