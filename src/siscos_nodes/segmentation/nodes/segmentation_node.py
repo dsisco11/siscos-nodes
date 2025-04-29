@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
 from invokeai.app.invocations.fields import ImageField, InputField
@@ -40,7 +42,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.5.0",
+    version="0.6.0",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -50,8 +52,14 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 """
 
     image: ImageField = InputField(ui_order=0, title="Image", description="The image to segment")
-    model_type: SegmentationModelType = InputField(
+    attention_mask: Optional[MaskingField] = InputField(
         ui_order=1,
+        title="Attention Mask",
+        description="The attention mask to use for the image. This is used to limit the area of the image that is processed.",
+        default=None
+    )
+    model_type: SegmentationModelType = InputField(
+        ui_order=2,
         title="Resolver",
         default=ESegmentationModel.CLIPSEG,
         description="The model to use for segmentation",
@@ -62,23 +70,23 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     )
     # TODO:(sisco): Add support for tiling.
     use_tiling: bool = InputField(
-        ui_order=2,
+        ui_order=3,
         title="Use Tiling", 
         default=False, description="Whether to use tiling for larger images. This will split the image into tiles and process each tile separately."
     )
     smoothing: float = InputField(
-        ui_order=3,
+        ui_order=4,
         title="Smoothing", 
-        default=4.0, description="Smoothing radius to apply to the raw segmentation response"
+        default=6.0, description="Smoothing radius to apply to the raw segmentation response"
     )
     min_threshold: float = InputField(
-        ui_order=4,
+        ui_order=6,
         title="Threshold",
         description="The minimum threshold to use for the positive/negative response. Values below this will be clipped to 0 for both",
         default=0.0,
     )
     negative_strength: float = InputField(
-        ui_order=5,
+        ui_order=7,
         title="Negative Strength",
         default=1.0, description="""Attenuation strength of the negative prompt when blending with the positive prompt.
         For binary modes (eg: OR, AND, XOR) 
@@ -90,32 +98,32 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     )
     
     p_blend_mode: MixingMode = InputField(
-        ui_order=6,
+        ui_order=8,
         title="Positive Blending Mode", default=EMixingMode.AVERAGE, description="How to combine the positive prompts together"
     )
     prompt_positive: list[str] = InputField(
-        ui_order=7,
+        ui_order=9,
         title="Positive Prompt", description="The positive prompt(s) to use for segmentation.\nResults from all positive prompts are combined together before being affected by the negatives."
     )
     n_blend_mode: MixingMode = InputField(
-        ui_order=8,
+        ui_order=10,
         title="Negative Blending Mode", default=EMixingMode.AVERAGE, description="How to combine the negative prompts together"
     )
     prompt_negative: list[str] = InputField(
-        ui_order=9,
+        ui_order=11,
         title="Negative Prompt", description="The negative prompt(s) to use for segmentation.\nResults from all negative prompts are combined together before affecting the positives."
     )
     compare_mode: MixingMode = InputField(
-        ui_order=10,
+        ui_order=12,
         title="Comparison Mode",
         default=EMixingMode.SUPPRESS, description="How the negatives affect the positives.\nThis is the blend mode used to combine the positive and negative masks together.",
     )
     confidence_threshold: float = InputField(
-        ui_order=11,
+        ui_order=13,
         title="Confidence Threshold", default=1.0, description=""
     )
     final_contrast: float = InputField(
-        ui_order=12,
+        ui_order=14,
         title="Contrast", default=1.0, description="The contrast to apply to the final mask.\nThis is applied as a power function to the final grayscale mask.\nA value of 1.0 will not change the contrast, while a value of 0.0 will make the mask completely flat.\nA value of 2.0 will double the contrast, and a value of 0.5 will halve the contrast."
     )
 
@@ -126,6 +134,9 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         pos_prompt_count = len(self.prompt_positive)
         neg_prompt_count = len(self.prompt_negative)
         model: SegmentationModel = SEGMENTATION_MODEL_TYPES[ESegmentationModel(self.model_type)]()
+        attn_mask: Optional[torch.Tensor] = None
+        if self.attention_mask is not None:
+            attn_mask = self.attention_mask.load(context)
 
         # If we have no prompts, we can skip the model call and just return a blank mask.
         if (pos_prompt_count == 0 and neg_prompt_count == 0):
@@ -152,8 +163,13 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         logits = model.execute(context, image_in, prompts=_prompts)
         context.util.signal_progress("Processing results", 0.2)
 
-        p_logits = logits[0:pos_prompt_count]#.permute(1, 0, 2, 3)
-        n_logits = logits[pos_prompt_count:]#.permute(1, 0, 2, 3)
+        # apply the attention mask to the logits BEFORE we collapse the scalar fields.
+        # This is done to ensure that the collapse mode doesnt interfere with the attention mask.
+        if attn_mask is not None:
+            logits = torch.multiply(logits, attn_mask)
+
+        p_logits = logits[0:pos_prompt_count]
+        n_logits = logits[pos_prompt_count:]
 
         pos_logits = collapse_scalar_fields(p_logits, self.min_threshold, EMixingMode(self.p_blend_mode))   # (B, 1, H₁, W₁)
         net_logits = pos_logits
