@@ -1,6 +1,3 @@
-from enum import Enum
-from typing import Any, Literal
-
 import torch
 from invokeai.app.invocations.baseinvocation import (
     BaseInvocationOutput,
@@ -17,21 +14,11 @@ from pydantic import BaseModel, Field
 from torchvision.transforms.functional import to_pil_image as tensor_to_pil
 from torchvision.transforms.functional import to_tensor as image_to_tensor
 
+from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
     convert_masking_tensor_to_pixel_format,
 )
 
-
-class EMaskingMode(str, Enum):
-    """Enum for Masking Modes, which determine the form of a given image mask."""
-
-    BOOLEAN = "Boolean" # eg: boolean tensor, shape: [1, H, W], dtype: bool, image mode = '1'
-    GRADIENT = "Gradient" # eg: scalar(0.0 - 1.0) tensor, shape: [1, H, W], dtype: float8/16/32, image mode='I;16'
-    IMAGE_ALPHA = "image_alpha" # eg: image mode='RGBA', dtype: uint8, alpha channel is the mask
-    IMAGE_COMPOUND = "image_compound"# eg: each channel is a different mask
-    IMAGE_LUMINANCE = "image_luminance" # eg: image mode='L', dtype: uint8
-
-LMaskingMode = Literal[EMaskingMode.BOOLEAN, EMaskingMode.GRADIENT, EMaskingMode.IMAGE_ALPHA, EMaskingMode.IMAGE_COMPOUND, EMaskingMode.IMAGE_LUMINANCE]
 
 class MaskingField(BaseModel):
     """A masking primitive field."""

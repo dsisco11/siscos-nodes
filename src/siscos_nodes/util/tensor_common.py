@@ -5,7 +5,7 @@ import torch
 import torchvision
 import torchvision.transforms.functional
 
-from siscos_nodes.src.siscos_nodes.util.primitives import EMaskingMode
+from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode
 
 
 # @torch.compile(dynamic=True)

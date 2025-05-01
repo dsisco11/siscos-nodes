@@ -13,12 +13,12 @@ from invokeai.backend.util.devices import TorchDevice
 from invokeai.invocation_api import WithBoard
 from torchvision.transforms.functional import to_pil_image as tensor_to_pil
 
+from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode, LMaskingMode
 from siscos_nodes.src.siscos_nodes.segmentation.segmentation_model import (
     SegmentationModel,
 )
 from siscos_nodes.src.siscos_nodes.util.primitives import (
     AdvancedMaskOutput,
-    EMaskingMode,
     MaskingField,
 )
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
