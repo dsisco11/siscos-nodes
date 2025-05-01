@@ -34,7 +34,7 @@ class CastMaskToDenoiseOutput(BaseInvocationOutput):
     title="Cast To Denoising Mask",
     tags=["mask", "convert"],
     category="mask",
-    version="0.0.1",
+    version="0.0.2",
 )
 class CastMaskToDenoiseInvocation(BaseInvocation):
     """Converts a mask into a denoising mask by inverting and then applying any blurring requested."""
@@ -50,7 +50,7 @@ class CastMaskToDenoiseInvocation(BaseInvocation):
         # Apply gaussian blur to the mask tensor
         tensor = gaussian_blur(tensor, self.radius)
         # Save the tensor to the context
-        tensor_id = context.tensors.save(tensor.cpu())
+        tensor_id = context.tensors.save(tensor.unsqueeze(1).cpu())
 
         return CastMaskToDenoiseOutput(
             denoise_mask=DenoiseMaskField(mask_name=tensor_id, gradient=True)
