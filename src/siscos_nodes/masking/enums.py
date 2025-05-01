@@ -12,3 +12,12 @@ class EMaskingMode(str, Enum):
     IMAGE_LUMINANCE = "image_luminance" # eg: image mode='L', dtype: uint8
 
 LMaskingMode = Literal[EMaskingMode.BOOLEAN, EMaskingMode.GRADIENT, EMaskingMode.IMAGE_ALPHA, EMaskingMode.IMAGE_COMPOUND, EMaskingMode.IMAGE_LUMINANCE]
+
+
+class EMaskShape(str, Enum):
+    SOLID = "solid",
+    GRADIENT_RADIAL = "gradient_radial",
+    GRADIENT_VERTICAL = "gradient_vertical",
+    GRADIENT_HORIZONTAL = "gradient_horizontal",
+
+LMaskShape = Literal[EMaskShape.SOLID, EMaskShape.GRADIENT_RADIAL, EMaskShape.GRADIENT_VERTICAL, EMaskShape.GRADIENT_HORIZONTAL]
