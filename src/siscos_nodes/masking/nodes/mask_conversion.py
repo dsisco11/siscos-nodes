@@ -75,7 +75,7 @@ class ConvertMaskInvocation(BaseInvocation):
             # Converting FROM a boolean mask.
             tensor = apply_feathering_ellipse(tensor.to(torch.float32), self.strength)
 
-        mask_out_id: str = None
+        mask_out_id: str
         match (self.mode):
             case EMaskingMode.IMAGE_ALPHA:
                 img = tensor_to_pil(tensor, mode='RGBA')
