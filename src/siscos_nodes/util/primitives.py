@@ -4,11 +4,14 @@ from typing import Any, Literal
 import torch
 from invokeai.app.invocations.baseinvocation import (
     BaseInvocationOutput,
-    InvocationContext,
     invocation_output,
 )
 from invokeai.app.invocations.fields import ImageField, OutputField
 from invokeai.app.services.image_records.image_records_common import ImageCategory
+from invokeai.app.services.shared.invocation_context import (
+    InvocationContext,
+    MetadataField,
+)
 from invokeai.backend.util.devices import TorchDevice
 from pydantic import BaseModel, Field
 from torchvision.transforms.functional import to_pil_image as tensor_to_pil
@@ -84,7 +87,7 @@ class MaskingField(BaseModel):
                 raise ValueError(f"Unsupported mask mode: {self.mode}")
             
     @classmethod
-    def build(cls, context: InvocationContext, tensor: torch.Tensor, mode: EMaskingMode) -> "MaskingField":
+    def build(cls, context: InvocationContext, tensor: torch.Tensor, mode: EMaskingMode, metadata: MetadataField | None = None) -> "MaskingField":
         """Build a MaskingField from a tensor."""
         assert tensor is not None, "Tensor must not be None"
         if (tensor.dim() == 3):
@@ -99,7 +102,9 @@ class MaskingField(BaseModel):
         tensor = convert_masking_tensor_to_pixel_format(tensor, mode)
         pil_mode = MaskingField.getPILMode(mode)
         image = tensor_to_pil(tensor, mode=pil_mode)
-        dto = context.images.save(image, image_category=ImageCategory.MASK)
+        dto = context.images.save(image, image_category=ImageCategory.MASK, metadata=metadata)
+        if (dto is None):
+            raise ValueError("Failed to save image to asset cache.")
         return MaskingField(asset_id=dto.image_name, mode=mode)
 
 
