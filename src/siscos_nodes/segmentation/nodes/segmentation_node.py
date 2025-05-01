@@ -222,7 +222,6 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         context.util.signal_progress("Finalizing mask", 0.9)
         image_out = tensor_to_pil(net_logits, mode="L")
-        remaining_attn_out = tensor_to_pil(remaining_attn.squeeze(0), mode="L")
         _metadata = MetadataField({
             "origin": self.image.image_name,
             "segmentation_model": self.model_type,
@@ -239,11 +238,19 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             "confidence_threshold": self.confidence_threshold,
         })
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
-        remaining_attn_dto = context.images.save(remaining_attn_out, image_category=ImageCategory.MASK)
         context.util.signal_progress("Finished", 1)
         return AdvancedMaskOutput(
-            mask=MaskingField(asset_id=mask_dto.image_name, mode=EMaskingMode.IMAGE_LUMINANCE),
-            remaining_attention=MaskingField(asset_id=remaining_attn_dto.image_name, mode=EMaskingMode.IMAGE_LUMINANCE),
+            mask=MaskingField.build(
+                context=context,
+                tensor=net_logits,
+                mode=EMaskingMode.GRADIENT,
+                metadata=_metadata
+            ),
+            remaining_attention=MaskingField.build(
+                context=context,
+                tensor=remaining_attn,
+                mode=EMaskingMode.GRADIENT,
+            ),
             image=ImageField(image_name=mask_dto.image_name),
             width=width,
             height=height,
