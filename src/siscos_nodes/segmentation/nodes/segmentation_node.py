@@ -9,6 +9,7 @@ from invokeai.app.services.shared.invocation_context import (
     InvocationContext,
     MetadataField,
 )
+from invokeai.backend.util.devices import TorchDevice
 from invokeai.invocation_api import WithBoard
 from torchvision.transforms.functional import to_pil_image as tensor_to_pil
 
@@ -42,7 +43,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.6.0",
+    version="0.6.1",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -129,17 +130,18 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
     @torch.no_grad()
     def invoke(self, context: InvocationContext) -> AdvancedMaskOutput:
+        device: torch.device = TorchDevice.choose_torch_device()
+        dtype: torch.dtype = TorchDevice.choose_torch_dtype()
         image_in = context.images.get_pil(self.image.image_name, mode="RGB")
         image_size = image_in.size
         pos_prompt_count = len(self.prompt_positive)
         neg_prompt_count = len(self.prompt_negative)
         model: SegmentationModel = SEGMENTATION_MODEL_TYPES[ESegmentationModel(self.model_type)]()
-        attn_mask: Optional[torch.Tensor] = None
-        if self.attention_mask is not None:
-            attn_mask = self.attention_mask.load(context).unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
-            # match the attention mask to the input image size
-            if attn_mask.shape[2:3] != image_size:
-                attn_mask = resize_tensor(attn_mask, target_size=image_size)
+        attn_mask: torch.Tensor
+        if (self.attention_mask is not None):
+            attn_mask = self.attention_mask.load(context).unsqueeze(0)  # (1, 1, H, W)
+        else:
+            attn_mask = torch.ones((1, 1, image_size[1], image_size[0]), dtype=dtype, device=device)
 
         # If we have no prompts, we can skip the model call and just return a blank mask.
         if (pos_prompt_count == 0 and neg_prompt_count == 0):
@@ -168,8 +170,12 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         # apply the attention mask to the logits BEFORE we collapse the scalar fields.
         # This is done to ensure that the collapse mode doesnt interfere with the attention mask.
-        if attn_mask is not None:
-            logits = torch.multiply(logits, attn_mask)
+        if (self.attention_mask is not None):
+            attn = attn_mask.to(device=device, dtype=dtype)
+            # match the attention mask to the logits size
+            if (attn.shape[2:3] != logits.shape[2:3]):
+                attn = resize_tensor(attn, target_size=(logits.shape[2], logits.shape[3]))
+            logits = torch.multiply(logits, attn)
 
         p_logits = logits[0:pos_prompt_count]
         n_logits = logits[pos_prompt_count:]
@@ -177,7 +183,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         pos_logits = collapse_scalar_fields(p_logits, self.min_threshold, EMixingMode(self.p_blend_mode))   # (B, 1, H₁, W₁)
         net_logits = pos_logits
 
-        neg_logits: torch.Tensor = None
+        neg_logits: torch.Tensor
         if (neg_prompt_count > 0):
             neg_logits = collapse_scalar_fields(n_logits, self.min_threshold, EMixingMode(self.n_blend_mode))  # (B, 1, H₁, W₁)
         else:
@@ -199,6 +205,13 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         # Upscale the mask tensor to the original image size
         context.util.signal_progress("Upscaling mask", 0.6)
         net_logits = resize_tensor(net_logits, target_size=image_size)
+        
+        # match the attention mask to the input image size
+        if (attn_mask.shape[2:3] != image_size):
+            attn_mask = resize_tensor(attn_mask, target_size=image_size)
+
+        # Subtract the final logits from the attention mask.
+        remaining_attn: torch.Tensor = (attn_mask - net_logits).clamp(min=0.0, max=1.0)
 
         # Squeeze the channel dimension.
         net_logits = net_logits.permute(1,0,2,3).squeeze(0)
@@ -206,6 +219,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         context.util.signal_progress("Finalizing mask", 0.9)
         image_out = tensor_to_pil(net_logits, mode="L")
+        remaining_attn_out = tensor_to_pil(remaining_attn.squeeze(0), mode="L")
         _metadata = MetadataField({
             "origin": self.image.image_name,
             "segmentation_model": self.model_type,
@@ -222,9 +236,11 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             "confidence_threshold": self.confidence_threshold,
         })
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
+        remaining_attn_dto = context.images.save(remaining_attn_out, image_category=ImageCategory.MASK)
         context.util.signal_progress("Finished", 1)
         return AdvancedMaskOutput(
             mask=MaskingField(asset_id=mask_dto.image_name, mode=EMaskingMode.IMAGE_LUMINANCE),
+            remaining_attention=MaskingField(asset_id=remaining_attn_dto.image_name, mode=EMaskingMode.IMAGE_LUMINANCE),
             image=ImageField(image_name=mask_dto.image_name),
             width=width,
             height=height,
