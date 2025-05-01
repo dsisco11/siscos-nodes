@@ -6,23 +6,8 @@ from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
 from invokeai.app.invocations.fields import InputField
 from invokeai.app.services.shared.invocation_context import InvocationContext
 
-from ...util.primitives import EMaskingMode, MaskingField, MaskingNodeOutput
-
-
-class EMathOperators(str, Enum):
-    ADD = "add"
-    SUBTRACT = "subtract"
-    MULTIPLY = "multiply"
-    DIVIDE = "divide"
-    AVERAGE = "average"
-    MEDIAN = "median"
-    MAX = "max"
-    MIN = "min"
-    XOR = "xor"
-    OR = "or"
-    AND = "and"
-
-LCompareMode = Literal[EMathOperators.ADD, EMathOperators.SUBTRACT, EMathOperators.MULTIPLY, EMathOperators.DIVIDE, EMathOperators.AVERAGE, EMathOperators.MEDIAN, EMathOperators.MAX, EMathOperators.MIN, EMathOperators.XOR, EMathOperators.OR, EMathOperators.AND]
+from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode, EMathOperators, LMathOperators
+from siscos_nodes.src.siscos_nodes.util.primitives import MaskingField, MaskingNodeOutput
 
 @invocation(
     "mask_math",
@@ -36,7 +21,7 @@ class MaskMathOperationInvocation(BaseInvocation):
 
     mask_a: MaskingField = InputField(title="Mask A")
     mask_b: MaskingField = InputField(title="Mask B")
-    operation: LCompareMode = InputField(title="Operation", default="subtract")
+    operation: LMathOperators = InputField(title="Operation", default="subtract")
 
     def invoke(self, context: InvocationContext) -> MaskingNodeOutput:
         lhs = self.mask_a.load(context)

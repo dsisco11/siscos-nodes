@@ -21,3 +21,18 @@ class EMaskShape(str, Enum):
     GRADIENT_HORIZONTAL = "gradient_horizontal",
 
 LMaskShape = Literal[EMaskShape.SOLID, EMaskShape.GRADIENT_RADIAL, EMaskShape.GRADIENT_VERTICAL, EMaskShape.GRADIENT_HORIZONTAL]
+
+class EMathOperators(str, Enum):
+    ADD = "add"
+    SUBTRACT = "subtract"
+    MULTIPLY = "multiply"
+    DIVIDE = "divide"
+    AVERAGE = "average"
+    MEDIAN = "median"
+    MAX = "max"
+    MIN = "min"
+    XOR = "xor"
+    OR = "or"
+    AND = "and"
+
+LMathOperators = Literal[EMathOperators.ADD, EMathOperators.SUBTRACT, EMathOperators.MULTIPLY, EMathOperators.DIVIDE, EMathOperators.AVERAGE, EMathOperators.MEDIAN, EMathOperators.MAX, EMathOperators.MIN, EMathOperators.XOR, EMathOperators.OR, EMathOperators.AND]
