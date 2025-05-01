@@ -8,6 +8,7 @@ from invokeai.app.invocations.baseinvocation import (
     invocation_output,
 )
 from invokeai.app.invocations.fields import ImageField, OutputField
+from invokeai.backend.util.devices import TorchDevice
 from pydantic import BaseModel, Field
 from torchvision.transforms.functional import to_tensor as image_to_tensor
 
@@ -44,15 +45,16 @@ class MaskingField(BaseModel):
 
     def load(self, context: InvocationContext) -> torch.Tensor:
         """Load the mask from the asset cache."""
+        device: torch.device = TorchDevice.choose_torch_device()
         match (self.mode):
             case EMaskingMode.BOOLEAN | EMaskingMode.GRADIENT:
-                return context.tensors.load(self.asset_id)
+                return context.tensors.load(self.asset_id).to(device=device)
             case EMaskingMode.IMAGE_LUMINANCE:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode='L'))
+                return image_to_tensor(context.images.get_pil(self.asset_id, mode='L')).to(device=device)
             case EMaskingMode.IMAGE_ALPHA:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode='RGBA')).split(1)[-1]
+                return image_to_tensor(context.images.get_pil(self.asset_id, mode='RGBA')).split(1)[-1].to(device=device)
             case EMaskingMode.IMAGE_COMPOUND:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode='RGBA'))
+                return image_to_tensor(context.images.get_pil(self.asset_id, mode='RGBA')).to(device=device)
             case _:
                 raise ValueError(f"Unsupported mask mode: {self.mode}")
 
