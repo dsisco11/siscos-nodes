@@ -23,7 +23,7 @@ from siscos_nodes.src.siscos_nodes.util.primitives import (
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
     gaussian_blur,
     normalize_tensor,
-    upscale_tensor,
+    resize_tensor,
 )
 
 from ..common import (
@@ -138,8 +138,8 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         if self.attention_mask is not None:
             attn_mask = self.attention_mask.load(context).unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
             # match the attention mask to the input image size
-            if attn_mask.shape[0:1] != image_size:
-                attn_mask = upscale_tensor(attn_mask, target_size=image_size)
+            if attn_mask.shape[2:3] != image_size:
+                attn_mask = resize_tensor(attn_mask, target_size=image_size)
 
         # If we have no prompts, we can skip the model call and just return a blank mask.
         if (pos_prompt_count == 0 and neg_prompt_count == 0):
@@ -198,7 +198,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         # Upscale the mask tensor to the original image size
         context.util.signal_progress("Upscaling mask", 0.6)
-        net_logits = upscale_tensor(net_logits, target_size=image_size)
+        net_logits = resize_tensor(net_logits, target_size=image_size)
 
         # Squeeze the channel dimension.
         net_logits = net_logits.permute(1,0,2,3).squeeze(0)

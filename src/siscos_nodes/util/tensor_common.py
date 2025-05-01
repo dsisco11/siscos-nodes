@@ -9,7 +9,7 @@ import torchvision.transforms.functional
 # @torch.compile(dynamic=True)
 @torch.no_grad()
 @torch.jit.script
-def upscale_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.Tensor:
+def resize_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.Tensor:
     """
     Upscale a 4D torch tensor (batch, channels, height, width) to a given size.
 
