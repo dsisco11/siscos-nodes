@@ -26,7 +26,7 @@ from ...util.tensor_common import apply_feathering_ellipse
     title="Convert Mask",
     tags=["mask", "convert"],
     category="mask",
-    version="0.1.1",
+    version="0.1.2",
 )
 class ConvertMaskInvocation(BaseInvocation):
     """Converts a gradient mask into a bit mask."""
@@ -75,20 +75,10 @@ class ConvertMaskInvocation(BaseInvocation):
             # Converting FROM a boolean mask.
             tensor = apply_feathering_ellipse(tensor.to(torch.float32), self.strength)
 
-        mask_out_id: str
-        match (self.mode):
-            case EMaskingMode.IMAGE_ALPHA:
-                img = tensor_to_pil(tensor, mode='RGBA')
-                mask_out_id = context.images.save(img, image_category=ImageCategory.MASK).image_name
-            case EMaskingMode.IMAGE_COMPOUND:
-                img = tensor_to_pil(tensor, mode='RGBA')
-                mask_out_id = context.images.save(img, image_category=ImageCategory.MASK).image_name
-            case EMaskingMode.IMAGE_LUMINANCE:
-                img = tensor_to_pil(tensor, mode='L')
-                mask_out_id = context.images.save(img, image_category=ImageCategory.MASK).image_name
-            case EMaskingMode.BOOLEAN | EMaskingMode.GRADIENT:
-                mask_out_id = context.tensors.save(tensor)
-
         return MaskingNodeOutput(
-            mask=MaskingField(asset_id=mask_out_id, mode=originalMode)
+            mask=MaskingField.build(
+                context=context,
+                tensor=tensor,
+                mode=self.mode,
+            )
         )
