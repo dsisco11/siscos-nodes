@@ -1,5 +1,5 @@
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
@@ -27,7 +27,7 @@ from siscos_nodes.src.siscos_nodes.util.tensor_common import apply_feathering_el
 class ConvertMaskInvocation(BaseInvocation):
     """Converts a gradient mask into a bit mask."""
 
-    mask: MaskingField | TensorField | ImageField = InputField(title="Mask", ui_type=UIType.Any)
+    mask: Union[MaskingField, TensorField, ImageField] = InputField(title="Mask", ui_type=UIType.Any)
     mode: LMaskingMode = InputField(title="Mode", default=EMaskingMode.GRADIENT)
     strength: float = InputField(title="Strength", default=0.25, description="Strength of the conversion.\nE.g: when converting TO a bool-mask, this is the threshold.\nWhen converting FROM a bool-mask, this is the feathering distance.")
 
