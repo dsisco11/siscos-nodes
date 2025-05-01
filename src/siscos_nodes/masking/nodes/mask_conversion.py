@@ -1,24 +1,20 @@
 
-from ast import TypeAlias
-from typing import Any, Tuple, Union
+from typing import Tuple
 
 import torch
 from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
 from invokeai.app.invocations.fields import ImageField, InputField, TensorField, UIType
 from invokeai.app.services.shared.invocation_context import (
-    ImageCategory,
     InvocationContext,
 )
-from torchvision.transforms.functional import to_pil_image as tensor_to_pil
 from torchvision.transforms.functional import to_tensor as pil_to_tensor
 
-from ...util.primitives import (
-    EMaskingMode,
-    LMaskingMode,
+from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode, LMaskingMode
+from siscos_nodes.src.siscos_nodes.util.primitives import (
     MaskingField,
     MaskingNodeOutput,
 )
-from ...util.tensor_common import apply_feathering_ellipse
+from siscos_nodes.src.siscos_nodes.util.tensor_common import apply_feathering_ellipse
 
 
 @invocation(
