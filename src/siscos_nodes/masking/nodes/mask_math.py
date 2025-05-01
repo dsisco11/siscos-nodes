@@ -29,7 +29,7 @@ LCompareMode = Literal[EMathOperators.ADD, EMathOperators.SUBTRACT, EMathOperato
     title="Mask Math",
     tags=["mask", "math"],
     category="mask",
-    version="0.0.1",
+    version="0.0.2",
 )
 class MaskMathOperationInvocation(BaseInvocation):
     """Perform a mathematical operation on a mask."""
@@ -45,34 +45,38 @@ class MaskMathOperationInvocation(BaseInvocation):
         if lhs.shape != rhs.shape:
             raise ValueError(f"Mask shapes do not match: {lhs.shape} != {rhs.shape}")
 
+        result: torch.Tensor
         match (self.operation):
             case EMathOperators.ADD:
-                mask_in = torch.add(lhs, rhs)
+                result = torch.add(lhs, rhs)
             case EMathOperators.SUBTRACT:
-                mask_in = torch.sub(lhs, rhs)
+                result = torch.sub(lhs, rhs)
             case EMathOperators.MULTIPLY:
-                mask_in = torch.mul(lhs, rhs)
+                result = torch.mul(lhs, rhs)
             case EMathOperators.DIVIDE:
-                mask_in = torch.div(lhs, rhs)
+                result = torch.div(lhs, rhs)
             case EMathOperators.AVERAGE:
-                mask_in = torch.mean(torch.stack([lhs, rhs]), dim=0)
+                result = torch.mean(torch.stack([lhs, rhs]), dim=0)
             case EMathOperators.MEDIAN:
-                mask_in = torch.quantile(torch.stack([lhs, rhs]), dim=0, q=0.5)
+                result = torch.quantile(torch.stack([lhs, rhs]), dim=0, q=0.5)
             case EMathOperators.MAX:
-                mask_in = torch.max(lhs, rhs)
+                result = torch.max(lhs, rhs)
             case EMathOperators.MIN:
-                mask_in = torch.min(lhs, rhs)
+                result = torch.min(lhs, rhs)
             case EMathOperators.XOR:
-                mask_in = torch.logical_xor(lhs, rhs)
+                result = torch.logical_xor(lhs, rhs)
             case EMathOperators.OR:
-                mask_in = torch.logical_or(lhs, rhs)
+                result = torch.logical_or(lhs, rhs)
             case EMathOperators.AND:
-                mask_in = torch.logical_and(lhs, rhs)
+                result = torch.logical_and(lhs, rhs)
             case _:
                 raise ValueError(f"Unsupported operation: {self.operation}")
 
-        result_id = context.tensors.save(mask_in)
         result_mode: EMaskingMode = self.mask_a.mode
         return MaskingNodeOutput(
-            mask=MaskingField(asset_id=result_id, mode=result_mode)
+            mask=MaskingField.build(
+                context=context,
+                tensor=result,
+                mode=result_mode,
+            ),
         )
