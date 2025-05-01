@@ -16,7 +16,7 @@ from torchvision.transforms.functional import to_tensor as image_to_tensor
 
 from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
-    convert_masking_tensor_to_pixel_format,
+    MaskTensor,
 )
 
 
@@ -86,7 +86,7 @@ class MaskingField(BaseModel):
             else:
                 tensor = tensor.squeeze(0).squeeze(0)
         
-        tensor = convert_masking_tensor_to_pixel_format(tensor, mode)
+        tensor = MaskTensor.format(tensor, mode)
         pil_mode = MaskingField.getPILMode(mode)
         image = tensor_to_pil(tensor, mode=pil_mode)
         dto = context.images.save(image, image_category=ImageCategory.MASK, metadata=metadata)

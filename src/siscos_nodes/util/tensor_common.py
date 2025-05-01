@@ -186,25 +186,32 @@ def normalize_logits(logits: torch.Tensor) -> torch.Tensor:
     return (result * 2.0) - 1.0 # scale to [-1, 1]
 
 @torch.no_grad()
-@torch.jit.script
-def convert_masking_tensor_to_pixel_format(tensor: torch.Tensor, mode: EMaskingMode) -> torch.Tensor:
-    """
-    Convert a tensor to the pixel format of the mask.
-    This is a placeholder for the actual conversion logic.
-    """
+class MaskTensor:
 
-    match (mode):
-        case EMaskingMode.BOOLEAN:
-            return tensor.to(torch.bool)
-        case EMaskingMode.GRADIENT:
-            # convert to int16
-            return tensor.clamp(0.0, 1.0).mul(65535).to(torch.int16)
-        case EMaskingMode.IMAGE_LUMINANCE:
-            return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
-        case EMaskingMode.IMAGE_ALPHA:
-            return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
-        case EMaskingMode.IMAGE_COMPOUND:
-            return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
-        case _:
-            raise ValueError(f"Unsupported mask mode: {mode}")
-
+    @staticmethod
+    def format(tensor: torch.Tensor, mode: EMaskingMode) -> torch.Tensor:
+        """
+        Convert a tensor to the correct numeric format for output as an image file, based on the masking mode.
+        """
+        match (mode):
+            case EMaskingMode.BOOLEAN:
+                return tensor.to(torch.bool)
+            case EMaskingMode.GRADIENT:
+                # convert to int16
+                return MaskTensor._convert_to_int16(tensor)
+            case EMaskingMode.IMAGE_LUMINANCE | EMaskingMode.IMAGE_ALPHA | EMaskingMode.IMAGE_COMPOUND:
+                return MaskTensor._convert_to_uint8(tensor)
+            case _:
+                raise ValueError(f"Unsupported mask mode: {mode}")
+    
+    @staticmethod
+    @torch.jit.script
+    def _convert_to_int16(tensor: torch.Tensor) -> torch.Tensor:
+        """Convert a tensor to int16 format."""
+        return tensor.clamp(0.0, 1.0).mul(65535).to(torch.int16)
+    
+    @staticmethod
+    @torch.jit.script
+    def _convert_to_uint8(tensor: torch.Tensor) -> torch.Tensor:
+        """Convert a tensor to uint8 format."""
+        return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
