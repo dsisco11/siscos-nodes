@@ -6,8 +6,17 @@ from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
 from invokeai.app.invocations.fields import InputField
 from invokeai.app.services.shared.invocation_context import InvocationContext
 
-from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode, EMathOperators, LMathOperators
-from siscos_nodes.src.siscos_nodes.util.primitives import MaskingField, MaskingNodeOutput
+from siscos_nodes.src.siscos_nodes.masking.enums import (
+    EMaskingMode,
+    EMathOperators,
+    LMathOperators,
+)
+from siscos_nodes.src.siscos_nodes.util.primitives import (
+    MaskingField,
+    MaskingNodeOutput,
+)
+from siscos_nodes.src.siscos_nodes.util.tensor_common import resize_tensor
+
 
 @invocation(
     "mask_math",
@@ -26,6 +35,10 @@ class MaskMathOperationInvocation(BaseInvocation):
     def invoke(self, context: InvocationContext) -> MaskingNodeOutput:
         lhs = self.mask_a.load(context)
         rhs = self.mask_b.load(context)
+
+        # ensure the tensors are the same size
+        if (lhs.shape[-2:] != rhs.shape[-2:]):
+            lhs = resize_tensor(lhs, rhs.shape[-2:])
 
         if lhs.shape != rhs.shape:
             raise ValueError(f"Mask shapes do not match: {lhs.shape} != {rhs.shape}")
