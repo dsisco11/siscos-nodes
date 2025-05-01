@@ -42,6 +42,7 @@ class CastMaskToDenoiseInvocation(BaseInvocation):
     mask: MaskingField = InputField(title="Mask")
     radius: float = InputField(title="Radius", default=4.0, description="This is the radius of the Gaussian blur applied to the denoising mask.")
 
+    @torch.no_grad()
     def invoke(self, context: InvocationContext) -> CastMaskToDenoiseOutput:
         tensor: torch.Tensor = self.mask.load(context)
         # Convert to denoising mask by inverting the mask
@@ -49,7 +50,7 @@ class CastMaskToDenoiseInvocation(BaseInvocation):
         # Apply gaussian blur to the mask tensor
         tensor = gaussian_blur(tensor, self.radius)
         # Save the tensor to the context
-        tensor_id = context.tensors.save(tensor)
+        tensor_id = context.tensors.save(tensor.cpu())
 
         return CastMaskToDenoiseOutput(
             denoise_mask=DenoiseMaskField(mask_name=tensor_id, gradient=True)
