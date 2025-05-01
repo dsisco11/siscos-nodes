@@ -38,7 +38,7 @@ class MaskMathOperationInvocation(BaseInvocation):
 
         # ensure the tensors are the same size
         if (lhs.shape[-2:] != rhs.shape[-2:]):
-            lhs = resize_tensor(lhs, rhs.shape[-2:])
+            rhs = resize_tensor(rhs, target_size=(lhs.shape[-2], lhs.shape[-1]))
 
         if lhs.shape != rhs.shape:
             raise ValueError(f"Mask shapes do not match: {lhs.shape} != {rhs.shape}")
