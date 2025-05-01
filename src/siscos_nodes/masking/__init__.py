@@ -1,3 +1,4 @@
+from .nodes.mask_cast_to_denoise import CastMaskToDenoiseInvocation
 from .nodes.mask_conversion import ConvertMaskInvocation
 from .nodes.mask_invert import InvertMaskInvocation
 from .nodes.mask_math import MaskMathOperationInvocation
@@ -8,4 +9,5 @@ __all__ = [
     "InvertMaskInvocation",
     "MaskMathOperationInvocation",
     "MaskPrimitiveInvocation",
+    "CastMaskToDenoiseInvocation",
 ]
