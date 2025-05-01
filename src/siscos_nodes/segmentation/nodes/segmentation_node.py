@@ -214,14 +214,13 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             attn_mask = resize_tensor(attn_mask, target_size=image_size)
 
         # Subtract the final logits from the attention mask.
-        remaining_attn: torch.Tensor = (attn_mask - net_logits).clamp(min=0.0, max=1.0)
+        remaining_attn: torch.Tensor = attn_mask.sub(net_logits).clamp(min=0.0, max=1.0)
 
         # Squeeze the channel dimension.
         net_logits = net_logits.permute(1,0,2,3).squeeze(0)
         _, height, width = net_logits.shape
 
         context.util.signal_progress("Finalizing mask", 0.9)
-        image_out = tensor_to_pil(net_logits, mode="L")
         _metadata = MetadataField({
             "origin": self.image.image_name,
             "segmentation_model": self.model_type,
@@ -237,6 +236,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
             "final_contrast": self.final_contrast,
             "confidence_threshold": self.confidence_threshold,
         })
+        image_out = tensor_to_pil(net_logits, mode="L")
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
         context.util.signal_progress("Finished", 1)
         return AdvancedMaskOutput(
