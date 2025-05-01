@@ -43,7 +43,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.6.1",
+    version="0.6.2",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -165,7 +165,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         # Combine the positive and negative prompts into a single list so we can do just a single model dispatch.
         # Strip each prompt to remove any leading/trailing whitespace and help stabilize behavior.
         _prompts = [x.strip() for x in (self.prompt_positive + self.prompt_negative)]
-        logits = model.execute(context, image_in, prompts=_prompts)
+        logits = model.execute(context, image_in, prompts=_prompts).clamp_min(0.0)
         context.util.signal_progress("Processing results", 0.2)
 
         # apply the attention mask to the logits BEFORE we collapse the scalar fields.
@@ -193,14 +193,17 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         if (self.smoothing > 0):
             context.util.signal_progress("Smoothing results", 0.5)
-            net_logits = normalize_tensor(gaussian_blur(net_logits, sigma=self.smoothing))
+            net_logits = gaussian_blur(net_logits, sigma=self.smoothing)
 
         if (self.confidence_threshold < 1.0):
             net_logits = normalize_tensor(net_logits.clamp_max(self.confidence_threshold))
 
         if (self.final_contrast != 1.0):
             context.util.signal_progress("Adjusting contrast", 0.7)
-            net_logits = normalize_tensor(net_logits.pow(self.final_contrast))
+            net_logits = net_logits.pow(self.final_contrast)
+
+        # Re-Normalize the logits
+        net_logits = normalize_tensor(net_logits)
 
         # Upscale the mask tensor to the original image size
         context.util.signal_progress("Upscaling mask", 0.6)
