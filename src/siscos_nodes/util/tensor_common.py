@@ -5,6 +5,8 @@ import torch
 import torchvision
 import torchvision.transforms.functional
 
+from siscos_nodes.src.siscos_nodes.util.primitives import EMaskingMode
+
 
 # @torch.compile(dynamic=True)
 @torch.no_grad()
@@ -182,3 +184,27 @@ def normalize_logits(logits: torch.Tensor) -> torch.Tensor:
     result = (logits - vmin) + eps
     result /= range
     return (result * 2.0) - 1.0 # scale to [-1, 1]
+
+@torch.no_grad()
+@torch.jit.script
+def convert_masking_tensor_to_pixel_format(tensor: torch.Tensor, mode: EMaskingMode) -> torch.Tensor:
+    """
+    Convert a tensor to the pixel format of the mask.
+    This is a placeholder for the actual conversion logic.
+    """
+
+    match (mode):
+        case EMaskingMode.BOOLEAN:
+            return tensor.to(torch.bool)
+        case EMaskingMode.GRADIENT:
+            # convert to int16
+            return tensor.clamp(0.0, 1.0).mul(65535).to(torch.int16)
+        case EMaskingMode.IMAGE_LUMINANCE:
+            return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
+        case EMaskingMode.IMAGE_ALPHA:
+            return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
+        case EMaskingMode.IMAGE_COMPOUND:
+            return tensor.clamp(0.0, 1.0).mul(255).to(torch.uint8)
+        case _:
+            raise ValueError(f"Unsupported mask mode: {mode}")
+

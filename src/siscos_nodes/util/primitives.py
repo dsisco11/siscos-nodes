@@ -8,16 +8,22 @@ from invokeai.app.invocations.baseinvocation import (
     invocation_output,
 )
 from invokeai.app.invocations.fields import ImageField, OutputField
+from invokeai.app.services.image_records.image_records_common import ImageCategory
 from invokeai.backend.util.devices import TorchDevice
 from pydantic import BaseModel, Field
+from torchvision.transforms.functional import to_pil_image as tensor_to_pil
 from torchvision.transforms.functional import to_tensor as image_to_tensor
+
+from siscos_nodes.src.siscos_nodes.util.tensor_common import (
+    convert_masking_tensor_to_pixel_format,
+)
 
 
 class EMaskingMode(str, Enum):
     """Enum for Masking Modes, which determine the form of a given image mask."""
 
-    BOOLEAN = "Boolean" # eg: boolean tensor, shape: [1, H, W], dtype: bool
-    GRADIENT = "Gradient" # eg: scalar(0.0 - 1.0) tensor, shape: [1, H, W], dtype: float8/16/32
+    BOOLEAN = "Boolean" # eg: boolean tensor, shape: [1, H, W], dtype: bool, image mode = '1'
+    GRADIENT = "Gradient" # eg: scalar(0.0 - 1.0) tensor, shape: [1, H, W], dtype: float8/16/32, image mode='I;16'
     IMAGE_ALPHA = "image_alpha" # eg: image mode='RGBA', dtype: uint8, alpha channel is the mask
     IMAGE_COMPOUND = "image_compound"# eg: each channel is a different mask
     IMAGE_LUMINANCE = "image_luminance" # eg: image mode='L', dtype: uint8
@@ -43,20 +49,60 @@ class MaskingField(BaseModel):
         
         super().__init__(asset_id=_id, mode=_mode)
 
+    @staticmethod
+    def getPILMode(mask_mode: EMaskingMode) -> str:
+        """Get the PIL mode for the given mask mode."""
+        match (mask_mode):
+            case EMaskingMode.BOOLEAN:
+                return "1"
+            case EMaskingMode.GRADIENT:
+                return "I;16"
+            case EMaskingMode.IMAGE_LUMINANCE:
+                return "L"
+            case EMaskingMode.IMAGE_ALPHA:
+                return "L"
+            case EMaskingMode.IMAGE_COMPOUND:
+                return "RGBA"
+            case _:
+                raise ValueError(f"Unsupported mask mode: {mask_mode}")
+
     def load(self, context: InvocationContext) -> torch.Tensor:
         """Load the mask from the asset cache."""
         device: torch.device = TorchDevice.choose_torch_device()
         match (self.mode):
-            case EMaskingMode.BOOLEAN | EMaskingMode.GRADIENT:
-                return context.tensors.load(self.asset_id).to(device=device)
+            case EMaskingMode.BOOLEAN:
+                return image_to_tensor(context.images.get_pil(self.asset_id)).to(device=device)
+            case EMaskingMode.GRADIENT:
+                return image_to_tensor(context.images.get_pil(self.asset_id, mode="F")).to(device=device)
             case EMaskingMode.IMAGE_LUMINANCE:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode='L')).to(device=device)
+                return image_to_tensor(context.images.get_pil(self.asset_id, mode="L")).to(device=device)
             case EMaskingMode.IMAGE_ALPHA:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode='RGBA')).split(1)[-1].to(device=device)
+                return image_to_tensor(context.images.get_pil(self.asset_id, mode="RGBA")).split(1)[-1].to(device=device)
             case EMaskingMode.IMAGE_COMPOUND:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode='RGBA')).to(device=device)
+                return image_to_tensor(context.images.get_pil(self.asset_id)).to(device=device)
             case _:
                 raise ValueError(f"Unsupported mask mode: {self.mode}")
+            
+    @classmethod
+    def build(cls, context: InvocationContext, tensor: torch.Tensor, mode: EMaskingMode) -> "MaskingField":
+        """Build a MaskingField from a tensor."""
+        assert tensor is not None, "Tensor must not be None"
+        if (tensor.dim() == 3):
+            assert tensor.shape[0] == 1, f"Tensor must have shape [1, H, W], but got {tensor.shape}"
+            tensor = tensor.unsqueeze(0)
+        elif (tensor.dim() == 4):
+            if (tensor.shape[0] > 1 or tensor.shape[1] > 1):
+                raise ValueError(f"Unsupported mask shape: {tensor.shape}")
+            else:
+                tensor = tensor.squeeze(0).squeeze(0)
+        
+        tensor = convert_masking_tensor_to_pixel_format(tensor, mode)
+        pil_mode = MaskingField.getPILMode(mode)
+        image = tensor_to_pil(tensor, mode=pil_mode)
+        dto = context.images.save(image, image_category=ImageCategory.MASK)
+        return MaskingField(asset_id=dto.image_name, mode=mode)
+
+
 
 
 @invocation_output("masking_node_output")
