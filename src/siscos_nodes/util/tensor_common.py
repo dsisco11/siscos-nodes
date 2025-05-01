@@ -22,10 +22,27 @@ def resize_tensor(tensor: torch.Tensor, target_size: tuple[int, int]) -> torch.T
     Returns:
         torch.Tensor: Upscaled tensor.
     """
+    
+    original_dim = tensor.dim()
+    if (original_dim == 3):
+        # if the tensor is 3D, add a batch dimension
+        tensor = tensor.unsqueeze(0)
+    elif (original_dim == 2):
+        # if the tensor is 2D, add batch and channel dimensions
+        tensor = tensor.unsqueeze(0).unsqueeze(0)
+
     if tensor.dim() != 4:
         raise ValueError("Input tensor must be 4D (batch, channels, height, width).")
 
-    return torch.nn.functional.interpolate(tensor, size=target_size, mode='bilinear', align_corners=True)
+    result: torch.Tensor = torch.nn.functional.interpolate(tensor, size=target_size, mode='bilinear', align_corners=True)
+
+    # remove the batch dimension if it was added
+    if (original_dim == 3):
+        result = result.squeeze(0)
+    elif (original_dim == 2):
+        result = result.squeeze(0).squeeze(0)
+        
+    return result
 
 # @torch.compile(dynamic=True)
 @torch.no_grad()
