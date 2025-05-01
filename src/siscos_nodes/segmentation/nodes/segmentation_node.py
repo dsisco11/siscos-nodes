@@ -88,12 +88,12 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     negative_strength: float = InputField(
         ui_order=7,
         title="Negative Strength",
-        default=1.0, description="""Attenuation strength of the negative prompt when blending with the positive prompt.
-        For binary modes (eg: OR, AND, XOR) 
-            this is an inverse-offset subtracted from the negative results.
-            Formula: blend(mode, pos, neg - (1 - attenuation))
-        For all other modes, this is a scaling factor applied to the negative results.
-            Formula: blend(mode, pos, neg * attenuation)
+        default=1.0, description="""Attenuation strength of the negative prompt when blending with the positive prompt.\n
+        For binary modes (eg: OR, AND, XOR)\n
+            this is an inverse-offset subtracted from the negative results.\n
+            Formula: blend(mode, positive, negative - (1 - attenuation))\n
+        For all other modes, this is a scaling factor applied to the negative results.\n
+            Formula: blend(mode, positive, negative * attenuation)
         """
     )
     
