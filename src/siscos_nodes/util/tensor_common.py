@@ -185,30 +185,71 @@ def normalize_logits(logits: torch.Tensor) -> torch.Tensor:
     result /= range
     return (result * 2.0) - 1.0 # scale to [-1, 1]
 
-@torch.no_grad()
 class MaskTensor:
+    """
+    A utility class for handling mask tensors and their common functionalities.
+    """
+
+    def __init__(self):
+        pass
+
 
     @staticmethod
+    def getPILMode(mask_mode: EMaskingMode) -> str:
+        """Get the PIL mode for the given mask mode."""
+        match (mask_mode):
+            case EMaskingMode.BOOLEAN:
+                return "1"
+            case EMaskingMode.GRADIENT:
+                return "L"
+                # return "I;16"
+            case EMaskingMode.IMAGE_LUMINANCE:
+                return "L"
+            case EMaskingMode.IMAGE_ALPHA:
+                return "L"
+            case EMaskingMode.IMAGE_COMPOUND:
+                return "RGBA"
+            case _:
+                raise ValueError(f"Unsupported mask mode: {mask_mode}")
+
+    @staticmethod
+    @torch.no_grad()
     def format(tensor: torch.Tensor, mode: EMaskingMode) -> torch.Tensor:
         """
         Convert a tensor to the correct numeric format for output as an image file, based on the masking mode.
         """
+
+        result: torch.Tensor = tensor
         match (mode):
             case EMaskingMode.BOOLEAN:
-                return tensor.to(torch.bool)
+                result = tensor.to(torch.bool)
             case EMaskingMode.GRADIENT:
-                # convert to int16
-                return MaskTensor._convert_to_int16(tensor)
+                result = MaskTensor._convert_to_uint8(tensor)
+                # result = MaskTensor._convert_to_int16(tensor)
             case EMaskingMode.IMAGE_LUMINANCE | EMaskingMode.IMAGE_ALPHA | EMaskingMode.IMAGE_COMPOUND:
-                return MaskTensor._convert_to_uint8(tensor)
+                result = MaskTensor._convert_to_uint8(tensor)
             case _:
                 raise ValueError(f"Unsupported mask mode: {mode}")
+            
+        # ensure the tensor is the correct shape for handling by the PIL library
+        if (result.ndim == 3):
+            result = result.unsqueeze(0)
+        elif (result.ndim == 4):
+            if (result.shape[0] > 1 or result.shape[1] > 1):
+                raise ValueError(f"Unsupported mask shape: {result.shape}")
+            else:
+                result = result.squeeze(0).squeeze(0)
+
+        # result is now [C, H, W]
+        return result
+
     
     @staticmethod
     @torch.jit.script
     def _convert_to_int16(tensor: torch.Tensor) -> torch.Tensor:
         """Convert a tensor to int16 format."""
-        return tensor.clamp(0.0, 1.0).mul(65535).to(torch.int16)
+        return tensor.clamp(0.0, 1.0).mul(32768).to(torch.int16)
+        # return tensor.clamp(0.0, 1.0).mul(2.0).sub(1.0).mul(65536).to(torch.int16)
     
     @staticmethod
     @torch.jit.script

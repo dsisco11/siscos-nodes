@@ -39,23 +39,6 @@ class MaskingField(BaseModel):
         
         super().__init__(asset_id=_id, mode=_mode)
 
-    @staticmethod
-    def getPILMode(mask_mode: EMaskingMode) -> str:
-        """Get the PIL mode for the given mask mode."""
-        match (mask_mode):
-            case EMaskingMode.BOOLEAN:
-                return "1"
-            case EMaskingMode.GRADIENT:
-                return "I;16"
-            case EMaskingMode.IMAGE_LUMINANCE:
-                return "L"
-            case EMaskingMode.IMAGE_ALPHA:
-                return "L"
-            case EMaskingMode.IMAGE_COMPOUND:
-                return "RGBA"
-            case _:
-                raise ValueError(f"Unsupported mask mode: {mask_mode}")
-
     def load(self, context: InvocationContext) -> torch.Tensor:
         """Load the mask from the asset cache."""
         device: torch.device = TorchDevice.choose_torch_device()
@@ -86,9 +69,9 @@ class MaskingField(BaseModel):
             else:
                 tensor = tensor.squeeze(0).squeeze(0)
         
-        tensor = MaskTensor.format(tensor, mode)
-        pil_mode = MaskingField.getPILMode(mode)
-        image = tensor_to_pil(tensor, mode=pil_mode)
+        pil_mode = MaskTensor.getPILMode(mode)
+        formatted_tensor = MaskTensor.format(tensor, mode)
+        image = tensor_to_pil(formatted_tensor, mode=pil_mode)
         dto = context.images.save(image, image_category=ImageCategory.MASK, metadata=metadata)
         if (dto is None):
             raise ValueError("Failed to save image to asset cache.")
