@@ -46,11 +46,11 @@ class MaskingField(BaseModel):
             case EMaskingMode.BOOLEAN:
                 return image_to_tensor(context.images.get_pil(self.asset_id)).to(device=device)
             case EMaskingMode.GRADIENT:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode="F")).to(device=device)
+                return image_to_tensor(context.images.get_pil(self.asset_id)).to(device=device)
             case EMaskingMode.IMAGE_LUMINANCE:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode="L")).to(device=device)
+                return image_to_tensor(context.images.get_pil(self.asset_id)).to(device=device)
             case EMaskingMode.IMAGE_ALPHA:
-                return image_to_tensor(context.images.get_pil(self.asset_id, mode="RGBA")).split(1)[-1].to(device=device)
+                return image_to_tensor(context.images.get_pil(self.asset_id)).split(1)[-1].to(device=device)
             case EMaskingMode.IMAGE_COMPOUND:
                 return image_to_tensor(context.images.get_pil(self.asset_id)).to(device=device)
             case _:
