@@ -10,6 +10,7 @@ from invokeai.app.invocations.fields import ImageField, InputField
 from invokeai.app.services.shared.invocation_context import (
     ImageCategory,
     InvocationContext,
+    WithBoard,
 )
 from torchvision.transforms.functional import to_pil_image
 from torchvision.transforms.functional import to_tensor as pil_to_tensor
@@ -29,9 +30,9 @@ class MaskImageNodeOutput(BaseInvocationOutput):
     title="Image Mask",
     tags=["mask", "filter"],
     category="mask",
-    version="0.0.1",
+    version="0.0.2",
 )
-class MaskImageInvocation(BaseInvocation):
+class MaskImageInvocation(BaseInvocation, WithBoard):
     mask: MaskingField = InputField(title="Mask")
     image: ImageField = InputField(title="Image")
 
@@ -40,18 +41,26 @@ class MaskImageInvocation(BaseInvocation):
         image_in = context.images.get_pil(self.image.image_name)
         # Ensure the image tensor is on the same device as the mask
         image_tensor: torch.Tensor = pil_to_tensor(image_in).to(mask_in.device)
+        # Match the mask size to the image size
+        if (image_tensor.shape[-2:] != mask_in.shape[-2:]):
+            mask_in = torch.nn.functional.interpolate(
+                mask_in.unsqueeze(0),
+                size=image_tensor.shape[-2:],
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(0)
 
         result: torch.Tensor
         # Switch behaviour based on the image mode
         match (image_in.mode):
             case "L", "1", "I", "F":
-                result = torch.mul(image_tensor, mask_in)
+                result = image_tensor * mask_in
             case "RGB":
                 assert self.mask.mode != EMaskingMode.IMAGE_COMPOUND, "Mask mode IMAGE_COMPOUND is not supported for RGB images"
-                result = torch.mul(image_tensor, mask_in)
+                result = image_tensor * mask_in
             case "RGBA":
                 assert self.mask.mode != EMaskingMode.IMAGE_COMPOUND, "Mask mode IMAGE_COMPOUND is not supported for RGBA images"
-                result = torch.mul(image_tensor, mask_in)
+                result = image_tensor * mask_in
             case _:
                 raise ValueError(f"Unsupported image mode: {image_in.mode} for mask mode: {self.mask.mode}")
 
