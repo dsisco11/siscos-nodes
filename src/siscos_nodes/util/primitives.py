@@ -39,7 +39,7 @@ class MaskingField(BaseModel):
         
         super().__init__(asset_id=_id, mode=_mode)
 
-    def load(self, context: InvocationContext) -> torch.Tensor:
+    def load(self, context: InvocationContext) -> torch.Tensor: # [C, H, W]
         """Load the mask from the asset cache."""
         device: torch.device = TorchDevice.choose_torch_device()
         match (self.mode):
