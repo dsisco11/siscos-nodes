@@ -18,8 +18,8 @@ from siscos_nodes.src.siscos_nodes.segmentation.segmentation_model import (
     SegmentationModel,
 )
 from siscos_nodes.src.siscos_nodes.util.primitives import (
-    AdvancedMaskOutput,
     MaskingField,
+    SegmentationMaskOutput,
 )
 from siscos_nodes.src.siscos_nodes.util.tensor_common import (
     gaussian_blur,
@@ -43,7 +43,7 @@ from ..common import (
     title="Segmentation Resolver",
     tags=["mask", "segmentation", "txt2mask"],
     category="mask",
-    version="0.6.2",
+    version="0.7.0",
 )
 class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     """Uses the chosen image-segmentation model to resolve a mask from the given image using a positive & negative prompt.
@@ -129,7 +129,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
     )
 
     @torch.no_grad()
-    def invoke(self, context: InvocationContext) -> AdvancedMaskOutput:
+    def invoke(self, context: InvocationContext) -> SegmentationMaskOutput:
         device: torch.device = TorchDevice.choose_torch_device()
         dtype: torch.dtype = TorchDevice.choose_torch_dtype()
         image_in = context.images.get_pil(self.image.image_name, mode="RGB")
@@ -145,14 +145,12 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         # If we have no prompts, we can skip the model call and just return a blank mask.
         if (pos_prompt_count == 0 and neg_prompt_count == 0):
-            mask_tensor = torch.ones((image_size[1], image_size[0]), dtype=torch.bool)
-            mask_out = tensor_to_pil(mask_tensor, mode="L")
+            mask_tensor = torch.ones((image_size[1], image_size[0]), dtype=torch.bool, device=device)
+            mask_out = tensor_to_pil(mask_tensor, mode="1")
             mask_dto:ImageDTO = context.images.save(image=mask_out, image_category=ImageCategory.MASK)
-            return AdvancedMaskOutput(
+            return SegmentationMaskOutput(
                 mask=MaskingField(asset_id=mask_dto.image_name, mode=EMaskingMode.BOOLEAN),
-                image=ImageField(image_name=mask_dto.image_name),
-                width=image_size[0],
-                height=image_size[1],
+                remaining_attention=MaskingField(asset_id=mask_dto.image_name, mode=EMaskingMode.BOOLEAN),
             )
 
         if (pos_prompt_count == 0):
@@ -218,7 +216,6 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
 
         # Squeeze the channel dimension.
         net_logits = net_logits.permute(1,0,2,3).squeeze(0)
-        _, height, width = net_logits.shape
 
         context.util.signal_progress("Finalizing mask", 0.9)
         _metadata = MetadataField({
@@ -239,7 +236,7 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
         image_out = tensor_to_pil(net_logits, mode="L")
         mask_dto = context.images.save(image_out, image_category=ImageCategory.MASK, metadata=_metadata)
         context.util.signal_progress("Finished", 1)
-        return AdvancedMaskOutput(
+        return SegmentationMaskOutput(
             mask=MaskingField.build(
                 context=context,
                 tensor=net_logits,
@@ -251,7 +248,4 @@ class ResolveSegmentationMaskInvocation(BaseInvocation, WithBoard):
                 tensor=remaining_attn,
                 mode=EMaskingMode.GRADIENT,
             ),
-            image=ImageField(image_name=mask_dto.image_name),
-            width=width,
-            height=height,
         )

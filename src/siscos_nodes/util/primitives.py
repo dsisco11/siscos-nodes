@@ -90,10 +90,6 @@ class MaskingNodeOutput(BaseInvocationOutput):
     mask: MaskingField = OutputField(title="Mask")
 
 @invocation_output("adv_mask_output")
-class AdvancedMaskOutput(BaseInvocationOutput):
-
+class SegmentationMaskOutput(BaseInvocationOutput):
     mask: MaskingField = OutputField(title="Mask", description="The mask.")
     remaining_attention: MaskingField = OutputField(title="Remaining Attention", description="The initial attention mask excluding the returned mask.")
-    image: ImageField = OutputField(description="The mask as an image.")
-    width: int = OutputField(description="The width of the mask in pixels.")
-    height: int = OutputField(description="The height of the mask in pixels.")
