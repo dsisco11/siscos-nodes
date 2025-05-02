@@ -4,7 +4,10 @@ from invokeai.app.invocations.baseinvocation import BaseInvocation, invocation
 from invokeai.app.invocations.fields import InputField
 from invokeai.app.services.shared.invocation_context import InvocationContext
 
-from ...util.primitives import MaskingField, MaskingNodeOutput
+from siscos_nodes.src.siscos_nodes.util.primitives import (
+    MaskingField,
+    MaskingNodeOutput,
+)
 
 
 @invocation(
