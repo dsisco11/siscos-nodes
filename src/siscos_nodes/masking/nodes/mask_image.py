@@ -35,6 +35,11 @@ class MaskImageNodeOutput(BaseInvocationOutput):
 class MaskImageInvocation(BaseInvocation, WithBoard):
     mask: MaskingField = InputField(title="Mask")
     image: ImageField = InputField(title="Image")
+    invert: bool = InputField(
+        title="Invert",
+        default=False,
+        description="Invert the mask before applying it to the image.",
+    )
 
     def invoke(self, context: InvocationContext) -> MaskImageNodeOutput:
         mask_in = self.mask.load(context)
@@ -42,13 +47,17 @@ class MaskImageInvocation(BaseInvocation, WithBoard):
         # Ensure the image tensor is on the same device as the mask
         image_tensor: torch.Tensor = pil_to_tensor(image_in).to(mask_in.device)
         # Match the mask size to the image size
-        if (image_tensor.shape[-2:] != mask_in.shape[-2:]):
+        if (mask_in.shape[-2:] != image_tensor.shape[-2:]):
             mask_in = torch.nn.functional.interpolate(
                 mask_in.unsqueeze(0),
                 size=image_tensor.shape[-2:],
                 mode="bilinear",
                 align_corners=False,
             ).squeeze(0)
+
+        # Invert the mask if required
+        if (self.invert):
+            mask_in = 1 - mask_in
 
         result: torch.Tensor
         # Switch behaviour based on the image mode
