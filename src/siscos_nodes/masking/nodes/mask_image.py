@@ -38,7 +38,8 @@ class MaskImageInvocation(BaseInvocation):
     def invoke(self, context: InvocationContext) -> MaskImageNodeOutput:
         mask_in = self.mask.load(context)
         image_in = context.images.get_pil(self.image.image_name)
-        image_tensor: torch.Tensor = pil_to_tensor(image_in)
+        # Ensure the image tensor is on the same device as the mask
+        image_tensor: torch.Tensor = pil_to_tensor(image_in).to(mask_in.device)
 
         result: torch.Tensor
         # Switch behaviour based on the image mode
