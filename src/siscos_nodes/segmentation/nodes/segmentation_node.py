@@ -14,6 +14,15 @@ from invokeai.invocation_api import WithBoard
 from torchvision.transforms.functional import to_pil_image as tensor_to_pil
 
 from siscos_nodes.src.siscos_nodes.masking.enums import EMaskingMode, LMaskingMode
+from siscos_nodes.src.siscos_nodes.segmentation.common import (
+    SEGMENTATION_MODEL_TYPES,
+    EMixingMode,
+    ESegmentationModel,
+    MixingMode,
+    SegmentationModelType,
+    collapse_scalar_fields,
+    compare_scalar_fields,
+)
 from siscos_nodes.src.siscos_nodes.segmentation.segmentation_model import (
     SegmentationModel,
 )
@@ -25,16 +34,6 @@ from siscos_nodes.src.siscos_nodes.util.tensor_common import (
     gaussian_blur,
     normalize_tensor,
     resize_tensor,
-)
-
-from ..common import (
-    SEGMENTATION_MODEL_TYPES,
-    EMixingMode,
-    ESegmentationModel,
-    MixingMode,
-    SegmentationModelType,
-    collapse_scalar_fields,
-    compare_scalar_fields,
 )
 
 
