@@ -13,7 +13,7 @@ from siscos_nodes.src.siscos_nodes.util.primitives import (
 
 @invocation(
     "mask_slope_select",
-    title="Invert Mask",
+    title="Slope Select",
     tags=["mask", "filter", "slope select"],
     category="mask",
     version="0.0.1",
