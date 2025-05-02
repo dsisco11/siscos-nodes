@@ -40,7 +40,12 @@ class MaskingField(BaseModel):
         super().__init__(asset_id=_id, mode=_mode)
 
     def load(self, context: InvocationContext) -> torch.Tensor: # [C, H, W]
-        """Load the mask from the asset cache."""
+        """Load the mask from the asset cache.
+        The tensor is on the same device as the current context.
+
+        Returns:
+            torch.Tensor[C, H, W]: Tensor of shape [C, H, W] where C is the number of channels.
+        """
         device: torch.device = TorchDevice.choose_torch_device()
         match (self.mode):
             case EMaskingMode.BOOLEAN:
