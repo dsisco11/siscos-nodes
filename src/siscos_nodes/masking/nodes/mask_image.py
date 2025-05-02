@@ -69,7 +69,9 @@ class MaskImageInvocation(BaseInvocation, WithBoard):
                 result = image_tensor * mask_in
             case "RGBA":
                 assert self.mask.mode != EMaskingMode.IMAGE_COMPOUND, "Mask mode IMAGE_COMPOUND is not supported for RGBA images"
-                result = image_tensor * mask_in
+                # Only apply mask to the Alpha channel
+                result = image_tensor.clone()
+                result[3:4, :, :] *= mask_in
             case _:
                 raise ValueError(f"Unsupported image mode: {image_in.mode} for mask mode: {self.mask.mode}")
 
