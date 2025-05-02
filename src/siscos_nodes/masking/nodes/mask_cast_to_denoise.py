@@ -46,9 +46,11 @@ class CastMaskToDenoiseInvocation(BaseInvocation):
     def invoke(self, context: InvocationContext) -> CastMaskToDenoiseOutput:
         tensor: torch.Tensor = self.mask.load(context)
         # Convert to denoising mask by inverting the mask
-        tensor = (1.0 - tensor).clamp(min=0.0, max=1.0)
+        tensor = (1.0 - tensor)
         # Apply gaussian blur to the mask tensor
-        tensor = gaussian_blur(tensor, self.radius)
+        tensor = gaussian_blur(tensor, self.radius).clamp(min=0.0, max=1.0)
+        # Renormalize the tensor to be in the range [-1, 1] and clamp to [0, 1]
+        tensor = ((tensor * 2.0) - 1.0).clamp_min(0.0)
         # Save the tensor to the context
         tensor_id = context.tensors.save(tensor.unsqueeze(1).cpu())
 
