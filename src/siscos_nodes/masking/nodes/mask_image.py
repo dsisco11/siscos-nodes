@@ -26,13 +26,14 @@ class MaskImageNodeOutput(BaseInvocationOutput):
     image: ImageField = InputField(title="Image")
 
 @invocation(
-    "mask_image",
-    title="Image Mask",
-    tags=["mask", "filter"],
+    "image_mask",
+    title="Apply Mask",
+    tags=["mask", "filter", "image"],
     category="mask",
-    version="0.0.2",
+    version="0.0.3",
 )
 class MaskImageInvocation(BaseInvocation, WithBoard):
+    """Applies a mask to an image."""
     mask: MaskingField = InputField(title="Mask")
     image: ImageField = InputField(title="Image")
     invert: bool = InputField(
@@ -41,6 +42,7 @@ class MaskImageInvocation(BaseInvocation, WithBoard):
         description="Invert the mask before applying it to the image.",
     )
 
+    @torch.no_grad()
     def invoke(self, context: InvocationContext) -> MaskImageNodeOutput:
         mask_in = self.mask.load(context)
         image_in = context.images.get_pil(self.image.image_name)

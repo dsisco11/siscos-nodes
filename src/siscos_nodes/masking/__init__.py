@@ -5,6 +5,7 @@ from .nodes.mask_invert import InvertMaskInvocation
 from .nodes.mask_math import MaskMathOperationInvocation
 from .nodes.mask_primitive import MaskPrimitiveInvocation
 from .nodes.mask_slope_select import MaskSlopeSelectInvocation
+from .nodes.mask_to_image import MaskToImageInvocation
 
 __all__ = [
     "ConvertMaskInvocation",
@@ -14,4 +15,5 @@ __all__ = [
     "CastMaskToDenoiseInvocation",
     "MaskSlopeSelectInvocation",
     "MaskImageInvocation",
+    "MaskToImageInvocation",
 ]
