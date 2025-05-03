@@ -1,3 +1,5 @@
+from typing import TypeAlias
+
 import torch
 from invokeai.app.invocations.baseinvocation import (
     BaseInvocation,
@@ -12,11 +14,13 @@ from invokeai.app.services.shared.invocation_context import InvocationContext
 
 from siscos_nodes.src.siscos_nodes.util.primitives import MaskingField
 
+ListOfBoundingBoxes: TypeAlias = list[list[int]]
+"""A list of bounding boxes. Each bounding box is in the format [xmin, ymin, xmax, ymax]."""
 
 @invocation(
     "select_occupied",
     title="Select Occupied",
-    tags=["mask", "identification", "segmentation"],
+    tags=["segmentation", "identification"],
     category="segmentation",
     version="0.0.1",
 )
@@ -29,12 +33,9 @@ class SelectOccupiedInvocation(BaseInvocation):
     def invoke(self, context: InvocationContext) -> BoundingBoxCollectionOutput:
         mask_in = self.mask.load(context)
 
-        results: torch.Tensor = SelectOccupiedInvocation.find_bounding_boxes_gpu(
-            tensor=mask_in,
-            num_iters=100,
-        ).cpu()
+        results: torch.Tensor = SelectOccupiedInvocation.resolve_bounding_boxes(tensor=mask_in.squeeze(dim=0)).cpu()
         # transform the results to a list[int[4]] of bounding boxes]
-        detected: list[list[int]] = results.tolist()
+        detected: ListOfBoundingBoxes = results.tolist()
 
         # Convert detections to BoundingBoxCollectionOutput.
         bounding_boxes: list[BoundingBoxField] = []
@@ -54,7 +55,7 @@ class SelectOccupiedInvocation(BaseInvocation):
     @staticmethod
     @torch.no_grad()
     @torch.jit.script
-    def find_bounding_boxes_gpu(tensor: torch.Tensor, num_iters: int = 100) -> torch.Tensor:
+    def resolve_bounding_boxes(tensor: torch.Tensor, num_iters: int = 10000) -> torch.Tensor:
         """
         Find bounding boxes of >0 connected components in a 2D tensor.
 
@@ -105,8 +106,8 @@ class SelectOccupiedInvocation(BaseInvocation):
         # 6) coords for every fg pixel
         rows = torch.arange(H, device=tensor.device).view(H, 1).expand(H, W)
         cols = torch.arange(W, device=tensor.device).view(1, W).expand(H, W)
-        row_flat = rows.view(-1)[flat_mask]
-        col_flat = cols.view(-1)[flat_mask]
+        row_flat = rows.reshape(-1)[flat_mask]
+        col_flat = cols.reshape(-1)[flat_mask]
 
         # --- 7) scatter_reduce to get mins & maxes per component ---
         y_min = torch.full((N,), H,  device=device, dtype=torch.int64)
